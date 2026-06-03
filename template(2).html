@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>🔴 RedDrop v3.0</title>
+    <style>
+        :root {
+            --bg: #0a0a0a; --surface: #141414; --surface2: #1e1e1e;
+            --text: #ffffff; --text2: #a0a0a0; --accent: #ff1744; --accent2: #b71c1c;
+            --safe-bottom: env(safe-area-inset-bottom, 16px);
+            --safe-top: env(safe-area-inset-top, 16px);
+            --font-size: 16px; --screen-format: phone;
+        }
+        .theme-light { --bg: #f5f5f5; --surface: #ffffff; --surface2: #e8e8e8; --text: #1a1a1a; --text2: #666666; }
+        .theme-amoled { --bg: #000000; --surface: #0a0a0a; --surface2: #111111; }
+        .theme-ips { --bg: #ffffff; --surface: #f0f0f0; --surface2: #e0e0e0; --text: #000000; --text2: #555555; --accent: #000000; }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg); color: var(--text);
+            height: 100vh; height: 100dvh; overflow: hidden;
+            font-size: var(--font-size);
+            transition: background 0.3s, color 0.3s;
+        }
+        
+        /* Форматы экрана */
+        .format-phone { max-width: 480px; margin: 0 auto; }
+        .format-tablet { max-width: 768px; margin: 0 auto; }
+        .format-pc { max-width: 1200px; margin: 0 auto; }
+        .format-tv { max-width: 100%; }
+        
+        .screen {
+            position: absolute; inset: 0;
+            display: none; flex-direction: column;
+            background: var(--bg);
+            padding-top: var(--safe-top);
+            padding-bottom: var(--safe-bottom);
+        }
+        .screen.active { display: flex; }
+        
+        .header {
+            display: flex; align-items: center; justify-content: center;
+            padding: 12px 16px; z-index: 10; flex-shrink: 0;
+            background: var(--bg); gap: 12px;
+        }
+        .header-logo { font-size: 1.5rem; font-weight: 900; }
+        .header-logo .red { color: var(--accent); }
+        .header-back { position: absolute; left: 16px; font-size: 1.5rem; cursor: pointer; }
+        
+        .feed-container {
+            flex: 1; overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            -webkit-overflow-scrolling: touch;
+        }
+        .feed-container::-webkit-scrollbar { display: none; }
+        
+        .video-card {
+            height: calc(100vh - 56px - var(--safe-top) - var(--safe-bottom));
+            height: calc(100dvh - 56px - var(--safe-top) - var(--safe-bottom));
+            scroll-snap-align: start;
+            position: relative; display: flex;
+            align-items: center; justify-content: center;
+            background: #000;
+            animation: fadeIn 0.4s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @keyframes likeExplosion {
+            0% { transform: scale(1); }
+            30% { transform: scale(1.5); color: #ff6d00; }
+            60% { transform: scale(0.8); }
+            100% { transform: scale(1); }
+        }
+        @keyframes sparkPulse {
+            0%, 100% { box-shadow: 0 0 0 0 var(--accent); }
+            50% { box-shadow: 0 0 20px 5px var(--accent); }
+        }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .video-card video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+        .video-overlay {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            padding: 20px 16px 100px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            pointer-events: none;
+        }
+        .video-user { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+        .video-desc { font-size: 0.85rem; color: #ccc; }
+        .video-hashtags { font-size: 0.8rem; color: var(--accent); font-weight: 600; margin-top: 4px; }
+        
+        .video-actions {
+            position: absolute; right: 12px; bottom: 120px;
+            display: flex; flex-direction: column; gap: 20px;
+            align-items: center; z-index: 5;
+        }
+        .action-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+        .action-icon {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; transition: all 0.2s;
+        }
+        .action-icon:active { transform: scale(0.85); }
+        .action-icon.liked { animation: likeExplosion 0.6s ease; color: var(--accent); }
+        .action-count { font-size: 0.75rem; font-weight: 600; color: #fff; }
+        
+        .bottom-nav {
+            position: fixed; z-index: 100;
+            display: flex; gap: 4px;
+            background: var(--surface); border: 1px solid var(--surface2);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            transition: all 0.3s ease;
+        }
+        .nav-pos-bottom .bottom-nav {
+            bottom: calc(8px + var(--safe-bottom)); left: 50%;
+            transform: translateX(-50%); flex-direction: row;
+            border-radius: 28px; padding: 6px 12px;
+        }
+        .nav-pos-right .bottom-nav {
+            right: 8px; top: 50%; transform: translateY(-50%);
+            flex-direction: column; border-radius: 28px; padding: 8px 6px;
+        }
+        .nav-pos-left .bottom-nav {
+            left: 8px; top: 50%; transform: translateY(-50%);
+            flex-direction: column; border-radius: 28px; padding: 8px 6px;
+        }
+        
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+            padding: 8px 10px; border-radius: 20px; cursor: pointer;
+            color: var(--text2); font-size: 0.65rem; font-weight: 500;
+            transition: all 0.2s; position: relative;
+        }
+        .nav-pos-right .nav-item, .nav-pos-left .nav-item { padding: 10px 8px; }
+        .nav-item.active { color: var(--accent); }
+        .nav-item.active::after {
+            content: ''; position: absolute; bottom: 2px;
+            width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
+        }
+        .nav-item .nav-icon { font-size: 1.4rem; transition: transform 0.2s; }
+        .nav-item:active .nav-icon { transform: scale(0.85); }
+        .nav-item.profile-center {
+            border: 2px solid var(--accent); border-radius: 50%;
+            padding: 4px; animation: sparkPulse 2s infinite;
+        }
+        .nav-item.profile-center .nav-icon { font-size: 1.6rem; }
+        
+        .settings-group { padding: 0 16px; margin-bottom: 20px; animation: slideUp 0.3s ease; }
+        .settings-label {
+            font-size: 0.75rem; color: var(--text2);
+            text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 8px; padding-left: 4px;
+        }
+        .setting-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 16px; background: var(--surface);
+            border-radius: 14px; margin-bottom: 6px; cursor: pointer;
+            transition: background 0.2s;
+        }
+        .setting-row:active { background: var(--surface2); }
+        .setting-row .check { color: transparent; font-weight: bold; }
+        .setting-row .check.active { color: var(--accent); }
+        
+        .color-dots { display: flex; gap: 8px; }
+        .color-dot {
+            width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+            border: 2px solid transparent; transition: all 0.2s;
+        }
+        .color-dot.active { border-color: var(--text); transform: scale(1.2); }
+        
+        .btn {
+            background: var(--accent); color: #fff; border: none;
+            padding: 12px 24px; border-radius: 24px; font-weight: 700;
+            cursor: pointer; font-size: 0.9rem; width: 100%; margin-top: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn-outline { background: transparent; border: 2px solid var(--accent); color: var(--accent); }
+        
+        .input-field {
+            width: 100%; padding: 14px 16px; border-radius: 14px;
+            border: 1px solid var(--surface2); background: var(--surface);
+            color: var(--text); font-size: 1rem; outline: none; margin-bottom: 10px;
+            transition: border 0.2s;
+        }
+        .input-field:focus { border-color: var(--accent); }
+        
+        .spark-container {
+            display: flex; align-items: center; gap: 10px;
+            padding: 16px; background: var(--surface); border-radius: 16px;
+            margin: 12px 0; animation: sparkPulse 2s infinite;
+        }
+        .spark-bar {
+            flex: 1; height: 8px; background: var(--surface2);
+            border-radius: 4px; overflow: hidden;
+        }
+        .spark-fill {
+            height: 100%; background: linear-gradient(90deg, #ff6d00, var(--accent));
+            border-radius: 4px; transition: width 0.8s ease;
+        }
+        
+        .trend-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px; background: var(--surface); border-radius: 12px;
+            margin-bottom: 8px; cursor: pointer; transition: transform 0.2s;
+        }
+        .trend-item:active { transform: scale(0.98); }
+        .trend-rank { font-size: 1.5rem; font-weight: 900; color: var(--accent); width: 40px; text-align: center; }
+        
+        .toast {
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+            background: var(--accent); color: #fff; padding: 10px 24px;
+            border-radius: 24px; font-weight: 700; z-index: 200;
+            animation: toastIn 0.3s ease, toastOut 0.3s ease 1.7s forwards;
+            pointer-events: none;
+        }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        @keyframes toastOut { from { opacity: 1; } to { opacity: 0; } }
+        
+        .badge {
+            display: inline-block; padding: 4px 10px; border-radius: 12px;
+            font-size: 0.7rem; font-weight: 700; margin: 4px 2px;
+            animation: fadeIn 0.5s ease;
+        }
+        .badge-spark { background: linear-gradient(135deg, #ff6d00, var(--accent)); color: #fff; }
+        .badge-level { background: var(--surface2); color: var(--accent); }
+        
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text2); }
+        .empty-icon { font-size: 4rem; margin-bottom: 16px; }
+    </style>
+</head>
+<body class="nav-pos-right theme-dark format-phone">
+
+<div id="toastContainer"></div>
+
+<!-- ====== ЛЕНТА ====== -->
+<div class="screen active" id="screen-feed">
+    <div class="header">
+        <div class="header-logo"><span class="red">🔴</span> RedDrop</div>
+    </div>
+    <div class="feed-container" id="feedContainer"></div>
+</div>
+
+<!-- ====== АВТОРИЗАЦИЯ ====== -->
+<div class="screen" id="screen-auth" style="padding:20px;justify-content:center;align-items:center;">
+    <div style="width:100%;max-width:320px;">
+        <div style="text-align:center;margin-bottom:24px;">
+            <div style="font-size:4rem;">🔴</div>
+            <h2 style="margin:8px 0;">RedDrop</h2>
+            <p style="color:var(--text2);">Вход / Регистрация</p>
+        </div>
+        <input type="text" id="authNickname" class="input-field" placeholder="Никнейм">
+        <input type="password" id="authPassword" class="input-field" placeholder="Пароль">
+        <button class="btn" id="btnLogin">🚀 Войти</button>
+        <button class="btn btn-outline" id="btnRegister">✨ Зарегистрироваться</button>
+        <p id="authMsg" style="text-align:center;margin-top:12px;font-size:0.85rem;min-height:20px;"></p>
+    </div>
+</div>
+
+<!-- ====== ПРОФИЛЬ ====== -->
+<div class="screen" id="screen-profile">
+    <div class="header">
+        <span class="header-back" onclick="showScreen('screen-feed')">←</span>
+        <h3>👤 Профиль</h3>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:20px;text-align:center;">
+        <div style="font-size:5rem;animation: fadeIn 0.5s ease;">👤</div>
+        <h2 id="profileName" style="margin:8px 0;">-</h2>
+        <p style="color:var(--text2);" id="profileStatus">-</p>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:8px 0;">
+            <span class="badge badge-spark" id="profileBadgeSpark">🔥 Spark 0</span>
+            <span class="badge badge-level" id="profileBadgeLevel">⭐ Ур. 1</span>
+        </div>
+        <div class="spark-container">
+            <span>🔥</span>
+            <div class="spark-bar"><div class="spark-fill" id="profileSparkBar" style="width:0%"></div></div>
+            <span id="profileSparkDays" style="font-weight:700;font-size:0.9rem;">0/140</span>
+        </div>
+        <p style="font-size:0.8rem;color:var(--accent);">Бонус +<span id="profileBonus">0</span> дней к автоочистке</p>
+        <div style="display:flex;gap:20px;justify-content:center;margin:16px 0;">
+            <div><strong id="profileLikes">0</strong><br><small style="color:var(--text2);">Лайки</small></div>
+            <div><strong id="profileVideos">0</strong><br><small style="color:var(--text2);">Видео</small></div>
+            <div><strong id="profileFollowers">0</strong><br><small style="color:var(--text2);">Подписчики</small></div>
+        </div>
+        <button class="btn btn-outline" id="btnLogout" style="width:auto;padding:10px 40px;">🚪 Выйти</button>
+    </div>
+</div>
+
+<!-- ====== НАСТРОЙКИ ====== -->
+<div class="screen" id="screen-settings">
+    <div class="header">
+        <span class="header-back" onclick="showScreen('screen-feed')">←</span>
+        <h3>⚙️ Настройки</h3>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding-bottom:60px;">
+        <div class="settings-group">
+            <div class="settings-label">🎨 Тема оформления</div>
+            <div class="setting-row" id="opt-dark"><span>🌙 Тёмная (по умолчанию)</span><span class="check active">●</span></div>
+            <div class="setting-row" id="opt-light"><span>☀️ Светлая</span><span class="check">●</span></div>
+            <div class="setting-row" id="opt-amoled"><span>⬛ AMOLED (чёрный)</span><span class="check">●</span></div>
+            <div class="setting-row" id="opt-ips"><span>📄 IPS (белый)</span><span class="check">●</span></div>
+        </div>
+        
+        <div class="settings-group">
+            <div class="settings-label">🔴 Цвет акцента</div>
+            <div class="setting-row">
+                <div class="color-dots" id="accentDots">
+                    <div class="color-dot active" style="background:#ff1744;" data-color="#ff1744"></div>
+                    <div class="color-dot" style="background:#ff6d00;" data-color="#ff6d00"></div>
+                    <div class="color-dot" style="background:#ff4081;" data-color="#ff4081"></div>
+                    <div class="color-dot" style="background:#448aff;" data-color="#448aff"></div>
+                    <div class="color-dot" style="background:#69f0ae;" data-color="#69f0ae"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="settings-group">
+            <div class="settings-label">📍 Положение панели</div>
+            <div class="setting-row" id="opt-nav-right"><span>📱 RightFlow (справа)</span><span class="check active">●</span></div>
+            <div class="setting-row" id="opt-nav-bottom"><span>📱 Classic (снизу)</span><span class="check">●</span></div>
+            <div class="setting-row" id="opt-nav-left"><span>📱 LeftFlow (слева)</span><span class="check">●</span></div>
+        </div>
+        
+        <div class="settings-group">
+            <div class="settings-label">📏 Размер шрифта</div>
+            <div class="setting-row" id="opt-font-small"><span>🔤 Маленький (14px)</span><span class="check">●</span></div>
+            <div class="setting-row" id="opt-font-medium"><span>🔤 Средний (16px)</span><span class="check active">●</span></div>
+            <div class="setting-row" id="opt-font-large"><span>🔤 Большой (18px)</span><span class="check">●</span></div>
+        </div>
+        
+        <div class="settings-group">
+            <div class="settings-label">🖥 Формат экрана</div>
+            <div class="setting-row" id="opt-format-phone"><span>📱 Телефон (480px)</span><span class="check active">●</span></div>
+            <div class="setting-row" id="opt-format-tablet"><span>📋 Планшет (768px)</span><span class="check">●</span></div>
+            <div class="setting-row" id="opt-format-pc"><span>💻 ПК (1200px)</span><span class="check">●</span></div>
+            <div class="setting-row" id="opt-format-tv"><span>📺 ТВ (широкий)</span><span class="check">●</span></div>
+        </div>
+        
+        <div class="settings-group">
+            <div class="settings-label">🧹 Автоочистка (дней неактивности)</div>
+            <div class="setting-row" id="opt-clean-7"><span>7 дней</span><span class="check">●</span></div>
+            <div class="setting-row" id="opt-clean-14"><span>14 дней</span><span class="check">●</span></div>
+            <div class="setting-row" id="opt-clean-30"><span>30 дней (рекомендуется)</span><span class="check active">●</span></div>
+            <div class="setting-row" id="opt-clean-100"><span>100 дней 🔒 (Spark 140+)</span><span class="check">●</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- ====== ТРЕНДЫ ====== -->
+<div class="screen" id="screen-trending">
+    <div class="header">
+        <span class="header-back" onclick="showScreen('screen-feed')">←</span>
+        <h3>📈 Тренды</h3>
+    </div>
+    <div id="trendingList" style="flex:1;overflow-y:auto;padding:16px;"></div>
+</div>
+
+<!-- ====== ПАНЕЛЬ НАВИГАЦИИ ====== -->
+<nav class="bottom-nav" id="bottomNav">
+    <div class="nav-item active" data-screen="screen-feed" onclick="showScreen('screen-feed')">
+        <span class="nav-icon">🏠</span><span>Лента</span>
+    </div>
+    <div class="nav-item" data-screen="screen-trending" onclick="showScreen('screen-trending')">
+        <span class="nav-icon">📈</span><span>Тренды</span>
+    </div>
+    <div class="nav-item profile-center active" data-screen="screen-profile" onclick="showScreen('screen-profile')">
+        <span class="nav-icon">👤</span><span>Профиль</span>
+    </div>
+    <div class="nav-item" data-screen="screen-settings" onclick="showScreen('screen-settings')">
+        <span class="nav-icon">⚙️</span><span>Настройки</span>
+    </div>
+    <div class="nav-item" data-screen="screen-auth" onclick="showScreen('screen-auth')">
+        <span class="nav-icon">🔑</span><span>Войти</span>
+    </div>
+</nav>
+
+<script>
+// ====== ДАННЫЕ ======
+const VIDEOS = [
+    { id: 'v1', url: "https://www.w3schools.com/html/mov_bbb.mp4", name: "Шутка #67 😂", user: "FunnyRed", hashtags: ['#юмор', '#смех', '#вирус'], likes: 142, category: 'humor' },
+    { id: 'v2', url: "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4", name: "Пейзаж 4K 🌄", user: "NatureRed", hashtags: ['#природа', '#4k', '#красота'], likes: 89, category: 'nature' },
+    { id: 'v3', url: "https://filesamples.com/samples/video/mp4/sample_640x360.mp4", name: "Тутор #1 📚", user: "TechRed", hashtags: ['#туториал', '#обучение', '#tech'], likes: 56, category: 'tutorial' },
+    { id: 'v4', url: "https://www.w3schools.com/html/mov_bbb.mp4", name: "Лютый прикол 🤣", user: "LolRed", hashtags: ['#юмор', '#прикол', '#лайк'], likes: 210, category: 'humor' },
+    { id: 'v5', url: "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4", name: "Закат в горах 🏔", user: "WildRed", hashtags: ['#природа', '#горы', '#закат'], likes: 178, category: 'nature' }
+];
+
+let currentUser = null;
+let settings = {
+    theme: 'dark', navPos: 'right', accentColor: '#ff1744',
+    fontSize: 16, screenFormat: 'phone', autoClean: 30
+};
+let sparkData = { days: 0, level: 1, bonusDays: 0 };
+
+// ====== УТИЛИТЫ ======
+function toast(msg) {
+    const t = document.getElementById('toastContainer');
+    const el = document.createElement('div');
+    el.className = 'toast'; el.textContent = msg;
+    t.appendChild(el);
+    setTimeout(() => el.remove(), 2000);
+}
+
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const nav = document.querySelector(`.nav-item[data-screen="${id}"]`);
+    if (nav) nav.classList.add('active');
+    if (id === 'screen-profile' && currentUser) loadProfile();
+    if (id === 'screen-trending') loadTrending();
+}
+
+// ====== НАСТРОЙКИ ======
+function applyAllSettings() {
+    document.body.className = 'nav-pos-' + settings.navPos + ' theme-' + settings.theme + ' format-' + settings.screenFormat;
+    document.documentElement.style.setProperty('--accent', settings.accentColor);
+    document.documentElement.style.setProperty('--font-size', settings.fontSize + 'px');
+    updateAllChecks();
+    updateAllDots();
+    localStorage.setItem('reddrop_settings', JSON.stringify(settings));
+}
+
+function updateAllChecks() {
+    const checks = {
+        'opt-dark': settings.theme === 'dark',
+        'opt-light': settings.theme === 'light',
+        'opt-amoled': settings.theme === 'amoled',
+        'opt-ips': settings.theme === 'ips',
+        'opt-nav-right': settings.navPos === 'right',
+        'opt-nav-bottom': settings.navPos === 'bottom',
+        'opt-nav-left': settings.navPos === 'left',
+        'opt-font-small': settings.fontSize === 14,
+        'opt-font-medium': settings.fontSize === 16,
+        'opt-font-large': settings.fontSize === 18,
+        'opt-format-phone': settings.screenFormat === 'phone',
+        'opt-format-tablet': settings.screenFormat === 'tablet',
+        'opt-format-pc': settings.screenFormat === 'pc',
+        'opt-format-tv': settings.screenFormat === 'tv',
+        'opt-clean-7': settings.autoClean === 7,
+        'opt-clean-14': settings.autoClean === 14,
+        'opt-clean-30': settings.autoClean === 30,
+        'opt-clean-100': settings.autoClean === 100
+    };
+    Object.entries(checks).forEach(([id, active]) => {
+        const el = document.getElementById(id);
+        if (el) {
+            const check = el.querySelector('.check');
+            if (check) {
+                if (active) check.classList.add('active');
+                else check.classList.remove('active');
+            }
+        }
+    });
+}
+
+function updateAllDots() {
+    document.querySelectorAll('.color-dot').forEach(d => {
+        d.classList.remove('active');
+        if (d.dataset.color === settings.accentColor) d.classList.add('active');
+    });
+}
+
+// Привязка событий настроек
+document.getElementById('opt-dark').onclick = () => { settings.theme = 'dark'; applyAllSettings(); };
+document.getElementById('opt-light').onclick = () => { settings.theme = 'light'; applyAllSettings(); };
+document.getElementById('opt-amoled').onclick = () => { settings.theme = 'amoled'; applyAllSettings(); };
+document.getElementById('opt-ips').onclick = () => { settings.theme = 'ips'; applyAllSettings(); };
+document.getElementById('opt-nav-right').onclick = () => { settings.navPos = 'right'; applyAllSettings(); };
+document.getElementById('opt-nav-bottom').onclick = () => { settings.navPos = 'bottom'; applyAllSettings(); };
+document.getElementById('opt-nav-left').onclick = () => { settings.navPos = 'left'; applyAllSettings(); };
+document.getElementById('opt-font-small').onclick = () => { settings.fontSize = 14; applyAllSettings(); };
+document.getElementById('opt-font-medium').onclick = () => { settings.fontSize = 16; applyAllSettings(); };
+document.getElementById('opt-font-large').onclick = () => { settings.fontSize = 18; applyAllSettings(); };
+document.getElementById('opt-format-phone').onclick = () => { settings.screenFormat = 'phone'; applyAllSettings(); };
+document.getElementById('opt-format-tablet').onclick = () => { settings.screenFormat = 'tablet'; applyAllSettings(); };
+document.getElementById('opt-format-pc').onclick = () => { settings.screenFormat = 'pc'; applyAllSettings(); };
+document.getElementById('opt-format-tv').onclick = () => { settings.screenFormat = 'tv'; applyAllSettings(); };
+document.getElementById('opt-clean-7').onclick = () => { settings.autoClean = 7; applyAllSettings(); };
+document.getElementById('opt-clean-14').onclick = () => { settings.autoClean = 14; applyAllSettings(); };
+document.getElementById('opt-clean-30').onclick = () => { settings.autoClean = 30; applyAllSettings(); };
+document.getElementById('opt-clean-100').onclick = () => {
+    if (sparkData.days >= 140) { settings.autoClean = 100; applyAllSettings(); }
+    else toast('🔒 Нужен Spark 140 дней!');
+};
+
+document.getElementById('accentDots').onclick = function(e) {
+    if (e.target.classList.contains('color-dot')) {
+        settings.accentColor = e.target.dataset.color;
+        applyAllSettings();
+    }
+};
+
+// ====== АВТОРИЗАЦИЯ ======
+document.getElementById('btnRegister').onclick = function() {
+    const nick = document.getElementById('authNickname').value.trim();
+    const pass = document.getElementById('authPassword').value.trim();
+    const msg = document.getElementById('authMsg');
+    msg.style.color = 'var(--accent)';
+    if (!nick || !pass) { msg.textContent = '⚠️ Заполни все поля!'; return; }
+    if (nick.length < 3) { msg.textContent = '⚠️ Ник от 3 символов!'; return; }
+    if (pass.length < 4) { msg.textContent = '⚠️ Пароль от 4 символов!'; return; }
+    const users = JSON.parse(localStorage.getItem('reddrop_users') || '{}');
+    if (users[nick]) { msg.textContent = '⚠️ Этот ник уже занят!'; return; }
+    users[nick] = {
+        password: pass, likes: 0, likedVideos: [],
+        followers: [], following: [], videos: 0,
+        spark: { days: 0, level: 1, bonusDays: 0, lastActive: new Date().toISOString() },
+        createdAt: new Date().toISOString()
+    };
+    localStorage.setItem('reddrop_users', JSON.stringify(users));
+    msg.style.color = '#4caf50';
+    msg.textContent = '✅ Аккаунт создан! Теперь войди.';
+    document.getElementById('authPassword').value = '';
+};
+
+document.getElementById('btnLogin').onclick = function() {
+    const nick = document.getElementById('authNickname').value.trim();
+    const pass = document.getElementById('authPassword').value.trim();
+    const msg = document.getElementById('authMsg');
+    msg.style.color = 'var(--accent)';
+    if (!nick || !pass) { msg.textContent = '⚠️ Заполни все поля!'; return; }
+    const users = JSON.parse(localStorage.getItem('reddrop_users') || '{}');
+    if (!users[nick]) { msg.textContent = '⚠️ Пользователь не найден!'; return; }
+    if (users[nick].password !== pass) { msg.textContent = '⚠️ Неверный пароль!'; return; }
+    currentUser = { nickname: nick, ...users[nick] };
+    sparkData = users[nick].spark || { days: 0, level: 1, bonusDays: 0 };
+    updateSparkOnLogin();
+    localStorage.setItem('reddrop_current_user', JSON.stringify(currentUser));
+    msg.style.color = '#4caf50';
+    msg.textContent = '✅ Вход выполнен!';
+    setTimeout(() => showScreen('screen-feed'), 500);
+    loadProfile();
+};
+
+document.getElementById('btnLogout').onclick = function() {
+    if (currentUser) {
+        const users = JSON.parse(localStorage.getItem('reddrop_users') || '{}');
+        users[currentUser.nickname] = { ...currentUser, spark: sparkData };
+        localStorage.setItem('reddrop_users', JSON.stringify(users));
+    }
+    currentUser = null;
+    localStorage.removeItem('reddrop_current_user');
+    showScreen('screen-feed');
+    toast('Вы вышли');
+};
+
+function updateSparkOnLogin() {
+    const now = new Date();
+    const lastActive = sparkData.lastActive ? new Date(sparkData.lastActive) : now;
+    const diffDays = Math.floor((now - lastActive) / (1000 * 60 * 60 * 24));
+    sparkData.days = diffDays <= 1 ? (sparkData.days || 0) + 1 : 1;
+    sparkData.level = sparkData.days >= 140 ? 5 : sparkData.days >= 30 ? 4 : sparkData.days >= 14 ? 3 : sparkData.days >= 5 ? 2 : 1;
+    sparkData.bonusDays = sparkData.days >= 140 ? 70 : sparkData.days >= 30 ? 14 : sparkData.days >= 14 ? 7 : 0;
+    sparkData.lastActive = now.toISOString();
+}
+
+// ====== ПРОФИЛЬ ======
+function loadProfile() {
+    if (!currentUser) return;
+    document.getElementById('profileName').textContent = currentUser.nickname;
+    document.getElementById('profileStatus').textContent = '✨ Участник RedDrop';
+    document.getElementById('profileLikes').textContent = currentUser.likes || 0;
+    document.getElementById('profileVideos').textContent = currentUser.videos || 0;
+    document.getElementById('profileFollowers').textContent = (currentUser.followers || []).length;
+    document.getElementById('profileBadgeSpark').textContent = '🔥 Spark ' + sparkData.days;
+    document.getElementById('profileBadgeLevel').textContent = '⭐ Ур. ' + sparkData.level;
+    document.getElementById('profileSparkDays').textContent = sparkData.days + '/140';
+    document.getElementById('profileBonus').textContent = sparkData.bonusDays;
+    document.getElementById('profileSparkBar').style.width = Math.min(100, (sparkData.days / 140) * 100) + '%';
+}
+
+// ====== ВИДЕО ======
+function getRecommendedVideos() {
+    if (!currentUser || !currentUser.likedVideos || currentUser.likedVideos.length === 0) {
+        return [...VIDEOS].sort((a, b) => b.likes - a.likes);
+    }
+    const likedCategories = currentUser.likedVideos
+        .map(id => VIDEOS.find(v => v.id === id))
+        .filter(v => v)
+        .map(v => v.category);
+    const uniqueCategories = [...new Set(likedCategories)];
+    const scored = VIDEOS.map(v => ({
+        ...v,
+        score: v.likes + (uniqueCategories.includes(v.category) ? 100 : 0)
+    }));
+    return scored.sort((a, b) => b.score - a.score);
+}
+
+function loadFeed() {
+    const c = document.getElementById('feedContainer');
+    c.innerHTML = '';
+    const videos = getRecommendedVideos();
+    videos.forEach((v, i) => {
+        const isLiked = currentUser?.likedVideos?.includes(v.id);
+        const card = document.createElement('div');
+        card.className = 'video-card';
+        card.innerHTML = `
+            <video src="${v.url}" loop muted playsinline preload="auto"></video>
+            <div class="video-overlay">
+                <div class="video-user">@${v.user}</div>
+                <div class="video-desc">${v.name}</div>
+                <div class="video-hashtags">${(v.hashtags||[]).join(' ')}</div>
+            </div>
+            <div class="video-actions">
+                <div class="action-btn" onclick="likeVideo('${v.id}', ${i})">
+                    <div class="action-icon ${isLiked ? 'liked' : ''}" id="like-icon-${i}" style="color:${isLiked ? 'var(--accent)' : ''}">❤️</div>
+                    <span class="action-count" id="like-count-${i}">${v.likes || 0}</span>
+                </div>
+                <div class="action-btn" onclick="shareVideo('${v.url}')">
+                    <div class="action-icon">↗️</div>
+                    <span class="action-count">Поделиться</span>
+                </div>
+            </div>`;
+        c.appendChild(card);
+    });
+    const firstVideo = document.querySelector('.video-card video');
+    if (firstVideo) firstVideo.play().catch(() => {});
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const video = entry.target.querySelector('video');
+            if (!video) return;
+            if (entry.isIntersecting) video.play().catch(() => {});
+            else video.pause();
+        });
+    }, { threshold: 0.7 });
+    document.querySelectorAll('.video-card').forEach(card => observer.observe(card));
+}
+
+function likeVideo(videoId, index) {
+    if (!currentUser) { toast('⚠️ Войди, чтобы лайкать!'); return; }
+    const icon = document.getElementById('like-icon-' + index);
+    const countEl = document.getElementById('like-count-' + index);
+    const users = JSON.parse(localStorage.getItem('reddrop_users') || '{}');
+    const user = users[currentUser.nickname];
+    if (!user.likedVideos) user.likedVideos = [];
+    const isLiked = user.likedVideos.includes(videoId);
+    if (isLiked) {
+        icon.style.color = '';
+        icon.classList.remove('liked');
+        user.likedVideos = user.likedVideos.filter(id => id !== videoId);
+        user.likes = Math.max(0, (user.likes || 1) - 1);
+        countEl.textContent = Math.max(0, parseInt(countEl.textContent) - 1);
+    } else {
+        icon.style.color = 'var(--accent)';
+        icon.classList.add('liked');
+        setTimeout(() => icon.classList.remove('liked'), 600);
+        user.likedVideos.push(videoId);
+        user.likes = (user.likes || 0) + 1;
+        countEl.textContent = parseInt(countEl.textContent) + 1;
+        toast('❤️ Лайк!');
+    }
+    currentUser = { nickname: currentUser.nickname, ...user };
+    users[currentUser.nickname] = user;
+    localStorage.setItem('reddrop_users', JSON.stringify(users));
+    localStorage.setItem('reddrop_current_user', JSON.stringify(currentUser));
+}
+
+function shareVideo(url) {
+    if (navigator.share) navigator.share({ title: 'RedDrop', url: url });
+    else { navigator.clipboard.writeText(url); toast('📋 Ссылка скопирована!'); }
+}
+
+// ====== ТРЕНДЫ ======
+function loadTrending() {
+    const c = document.getElementById('trendingList');
+    const sorted = [...VIDEOS].sort((a, b) => b.likes - a.likes);
+    c.innerHTML = sorted.map((v, i) => `
+        <div class="trend-item" onclick="showScreen('screen-feed');setTimeout(()=>document.querySelector('.video-card:nth-child(${i+1})')?.scrollIntoView(),300)">
+            <div class="trend-rank">#${i + 1}</div>
+            <div style="flex:1;">
+                <div style="font-weight:700;">${v.name}</div>
+                <div style="font-size:0.8rem;color:var(--text2);">@${v.user} · ${(v.hashtags||[]).join(' ')}</div>
+            </div>
+            <div style="color:var(--accent);font-weight:700;">❤️ ${v.likes}</div>
+        </div>
+    `).join('');
+}
+
+// ====== ИНИЦИАЛИЗАЦИЯ ======
+function init() {
+    const savedSettings = localStorage.getItem('reddrop_settings');
+    if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        settings = { ...settings, ...parsed };
+    }
+    applyAllSettings();
+    const savedUser = localStorage.getItem('reddrop_current_user');
+    if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        const users = JSON.parse(localStorage.getItem('reddrop_users') || '{}');
+        if (users[currentUser.nickname]) {
+            sparkData = users[currentUser.nickname].spark || sparkData;
+        }
+    }
+    loadFeed();
+}
+
+init();
+console.log('🔴 RedDrop v3.0 MEGA готов!');
+console.log('   ✅ 4 темы | 3 позиции меню | 5 цветов акцента');
+console.log('   ✅ 3 размера шрифта | 4 формата экрана | Автоочистка');
+console.log('   ✅ Spark-система | Тренды | Алгоритм рекомендаций');
+console.log('   ✅ Анимации лайков и пульсации');
+</script>
+</body>
+</html>
