@@ -6,45 +6,34 @@
     <title>🔴 RedDrop</title>
     <style>
         :root {
-            --bg: #0a0a0a;
-            --surface: #141414;
-            --surface2: #1e1e1e;
-            --text: #ffffff;
-            --text2: #a0a0a0;
-            --accent: #ff1744;
-            --accent2: #b71c1c;
+            --bg: #0a0a0a; --surface: #141414; --surface2: #1e1e1e;
+            --text: #ffffff; --text2: #a0a0a0; --accent: #ff1744; --accent2: #b71c1c;
             --safe-bottom: env(safe-area-inset-bottom, 16px);
             --safe-top: env(safe-area-inset-top, 16px);
-            --safe-left: env(safe-area-inset-left, 16px);
-            --safe-right: env(safe-area-inset-right, 16px);
         }
         .theme-light { --bg: #f5f5f5; --surface: #ffffff; --surface2: #e8e8e8; --text: #1a1a1a; --text2: #666666; }
         .theme-amoled { --bg: #000000; --surface: #0a0a0a; --surface2: #111111; }
         .theme-red { --bg: #0d0002; --surface: #1a0005; --surface2: #220008; --accent: #ff2255; }
-
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg); color: var(--text);
-            height: 100vh; height: 100dvh; overflow: hidden; font-size: 16px;
-            transition: background 0.3s, color 0.3s;
-        }
-        .screen { position: absolute; inset: 0; display: none; flex-direction: column; background: var(--bg); padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); padding-left: var(--safe-left); padding-right: var(--safe-right); }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); height: 100vh; height: 100dvh; overflow: hidden; font-size: 16px; transition: background 0.3s, color 0.3s; }
+        .screen { position: absolute; inset: 0; display: none; flex-direction: column; background: var(--bg); padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); }
         .screen.active { display: flex; }
         .header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; z-index: 10; flex-shrink: 0; background: var(--bg); }
-        .header-logo { font-size: 1.5rem; font-weight: 900; letter-spacing: -1px; }
+        .header-logo { font-size: 1.5rem; font-weight: 900; }
         .header-logo .red { color: var(--accent); }
+        .header-icons { display: flex; gap: 16px; }
+        .header-icons span { font-size: 1.3rem; cursor: pointer; }
         .feed-container { flex: 1; overflow-y: scroll; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; }
         .feed-container::-webkit-scrollbar { display: none; }
         .video-card { height: calc(100vh - 56px - var(--safe-top) - var(--safe-bottom)); height: calc(100dvh - 56px - var(--safe-top) - var(--safe-bottom)); scroll-snap-align: start; position: relative; display: flex; align-items: center; justify-content: center; background: #000; }
         .video-card video { width: 100%; height: 100%; object-fit: contain; background: #000; }
         .video-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 20px 16px 100px; background: linear-gradient(transparent, rgba(0,0,0,0.7)); pointer-events: none; }
-        .video-user { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+        .video-user { font-weight: 700; font-size: 0.95rem; }
         .video-desc { font-size: 0.85rem; color: #ccc; }
         .video-hashtags { font-size: 0.8rem; color: var(--accent); font-weight: 600; }
         .video-actions { position: absolute; right: 12px; bottom: 120px; display: flex; flex-direction: column; gap: 20px; align-items: center; z-index: 5; }
         .action-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; }
-        .action-icon { width: 44px; height: 44px; border-radius: 50%; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; transition: transform 0.2s; }
+        .action-icon { width: 44px; height: 44px; border-radius: 50%; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
         .action-icon:active { transform: scale(0.9); }
         .action-count { font-size: 0.75rem; font-weight: 600; color: #fff; }
         .bottom-nav { position: fixed; z-index: 100; display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--surface2); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transition: all 0.3s; }
@@ -56,11 +45,10 @@
         .nav-item.active { color: var(--accent); }
         .nav-item .nav-icon { font-size: 1.3rem; }
         .settings-group { padding: 0 16px; margin-bottom: 20px; }
-        .settings-label { font-size: 0.75rem; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; padding-left: 4px; }
+        .settings-label { font-size: 0.75rem; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
         .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--surface); border-radius: 14px; margin-bottom: 6px; cursor: pointer; }
-        .setting-row:active { background: var(--surface2); }
         .color-dots { display: flex; gap: 8px; }
-        .color-dot { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+        .color-dot { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
         .color-dot.active { border-color: var(--text); transform: scale(1.15); }
         .btn { background: var(--accent); color: #fff; border: none; padding: 12px 24px; border-radius: 24px; font-weight: 700; cursor: pointer; font-size: 0.9rem; width: 100%; margin-top: 12px; }
         .btn-outline { background: transparent; border: 2px solid var(--accent); color: var(--accent); }
@@ -79,7 +67,7 @@
 
 <div id="toastContainer"></div>
 
-<!-- ЭКРАН: ЛЕНТА -->
+<!-- ЛЕНТА -->
 <div class="screen active" id="screen-feed">
     <div class="header">
         <div class="header-logo"><span class="red">🔴</span> RedDrop</div>
@@ -88,28 +76,26 @@
             <span onclick="showScreen('screen-auth')">👤</span>
         </div>
     </div>
-    <div class="feed-container" id="feedContainer">
-        <div class="empty-state"><div class="empty-icon">📹</div><p>Загрузка видео...</p></div>
-    </div>
+    <div class="feed-container" id="feedContainer"></div>
 </div>
 
-<!-- ЭКРАН: АВТОРИЗАЦИЯ -->
+<!-- АВТОРИЗАЦИЯ -->
 <div class="screen" id="screen-auth" style="padding:20px;justify-content:center;align-items:center;">
     <div style="width:100%;max-width:320px;">
         <div style="text-align:center;margin-bottom:24px;">
             <div style="font-size:3rem;">🔴</div>
-            <h2 style="margin:8px 0;">RedDrop</h2>
-            <p style="color:var(--text2);font-size:0.9rem;">Войди или зарегистрируйся</p>
+            <h2>RedDrop</h2>
+            <p style="color:var(--text2);">Вход / Регистрация</p>
         </div>
         <input type="text" id="authNickname" class="input-field" placeholder="Никнейм">
         <input type="password" id="authPassword" class="input-field" placeholder="Пароль">
-        <button class="btn" onclick="login()">Войти</button>
-        <button class="btn btn-outline" onclick="register()">Зарегистрироваться</button>
-        <p id="authMsg" style="text-align:center;margin-top:12px;color:var(--accent);font-size:0.85rem;"></p>
+        <button class="btn" id="btnLogin">Войти</button>
+        <button class="btn btn-outline" id="btnRegister">Зарегистрироваться</button>
+        <p id="authMsg" style="text-align:center;margin-top:12px;font-size:0.85rem;"></p>
     </div>
 </div>
 
-<!-- ЭКРАН: ПРОФИЛЬ -->
+<!-- ПРОФИЛЬ -->
 <div class="screen" id="screen-profile">
     <div class="header">
         <span style="font-size:1.5rem;cursor:pointer;" onclick="showScreen('screen-feed')">←</span>
@@ -118,70 +104,62 @@
     </div>
     <div style="flex:1;overflow-y:auto;text-align:center;padding:24px;">
         <div style="width:80px;height:80px;border-radius:50%;background:var(--surface2);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:2.5rem;border:3px solid var(--accent);">👤</div>
-        <h2 id="profileName">Гость</h2>
-        <p style="color:var(--text2);" id="profileStatus">✨ Пользователь RedDrop</p>
+        <h2 id="profileName">-</h2>
+        <p style="color:var(--text2);" id="profileStatus">-</p>
         <div class="spark-bar"><div class="spark-fill" id="profileSparkBar" style="width:0%"></div></div>
-        <p style="font-size:0.8rem;color:var(--accent);" id="profileSpark">Spark: 0 дней</p>
-        <div style="display:flex;gap:20px;justify-content:center;margin:12px 0;">
-            <div><strong id="profileLikes">0</strong><br><small style="color:var(--text2);">Лайки</small></div>
-        </div>
-        <button class="btn btn-outline" onclick="logout()">Выйти</button>
+        <p style="font-size:0.8rem;color:var(--accent);" id="profileSparkText">Spark: 0 дн.</p>
+        <div style="margin:12px 0;"><strong id="profileLikes">0</strong><br><small style="color:var(--text2);">Лайки</small></div>
+        <button class="btn btn-outline" id="btnLogout">Выйти</button>
     </div>
 </div>
 
-<!-- ЭКРАН: НАСТРОЙКИ -->
+<!-- НАСТРОЙКИ -->
 <div class="screen" id="screen-settings">
     <div class="header">
         <span style="font-size:1.5rem;cursor:pointer;" onclick="showScreen('screen-profile')">←</span>
-        <h3>⚙️ Настройки</h3>
-        <div></div>
+        <h3>⚙️ Настройки</h3><div></div>
     </div>
     <div style="flex:1;overflow-y:auto;padding-bottom:40px;">
         <div class="settings-group">
             <div class="settings-label">🎨 Тема</div>
-            <div class="setting-row" onclick="setTheme('dark')"><span>🌙 Тёмная</span><span id="check-dark" style="color:var(--accent);">●</span></div>
-            <div class="setting-row" onclick="setTheme('light')"><span>☀️ Светлая</span><span id="check-light" style="color:transparent;">●</span></div>
-            <div class="setting-row" onclick="setTheme('amoled')"><span>⬛ AMOLED</span><span id="check-amoled" style="color:transparent;">●</span></div>
-            <div class="setting-row" onclick="setTheme('red')"><span>🔴 Красная</span><span id="check-red" style="color:transparent;">●</span></div>
+            <div class="setting-row" id="opt-dark"><span>🌙 Тёмная</span><span class="check">●</span></div>
+            <div class="setting-row" id="opt-light"><span>☀️ Светлая</span><span class="check" style="color:transparent;">●</span></div>
+            <div class="setting-row" id="opt-amoled"><span>⬛ AMOLED</span><span class="check" style="color:transparent;">●</span></div>
+            <div class="setting-row" id="opt-red"><span>🔴 Красная</span><span class="check" style="color:transparent;">●</span></div>
         </div>
         <div class="settings-group">
-            <div class="settings-label">🔴 Цвет акцента</div>
-            <div class="setting-row">
-                <div class="color-dots" id="accentDots">
-                    <div class="color-dot active" style="background:#ff1744;" data-color="#ff1744"></div>
-                    <div class="color-dot" style="background:#ff6d00;" data-color="#ff6d00"></div>
-                    <div class="color-dot" style="background:#ff4081;" data-color="#ff4081"></div>
-                    <div class="color-dot" style="background:#448aff;" data-color="#448aff"></div>
-                    <div class="color-dot" style="background:#69f0ae;" data-color="#69f0ae"></div>
-                </div>
-            </div>
+            <div class="settings-label">🔴 Акцент</div>
+            <div class="setting-row"><div class="color-dots" id="accentDots">
+                <div class="color-dot active" style="background:#ff1744;" data-color="#ff1744"></div>
+                <div class="color-dot" style="background:#ff6d00;" data-color="#ff6d00"></div>
+                <div class="color-dot" style="background:#ff4081;" data-color="#ff4081"></div>
+                <div class="color-dot" style="background:#448aff;" data-color="#448aff"></div>
+                <div class="color-dot" style="background:#69f0ae;" data-color="#69f0ae"></div>
+            </div></div>
         </div>
         <div class="settings-group">
-            <div class="settings-label">📍 Положение меню</div>
-            <div class="setting-row" onclick="setNavPos('right')"><span>📱 RightFlow (справа)</span><span id="nav-right" style="color:var(--accent);">●</span></div>
-            <div class="setting-row" onclick="setNavPos('bottom')"><span>📱 Classic (снизу)</span><span id="nav-bottom" style="color:transparent;">●</span></div>
-            <div class="setting-row" onclick="setNavPos('left')"><span>📱 LeftFlow (слева)</span><span id="nav-left" style="color:transparent;">●</span></div>
+            <div class="settings-label">📍 Меню</div>
+            <div class="setting-row" id="opt-nav-right"><span>📱 RightFlow</span><span class="check">●</span></div>
+            <div class="setting-row" id="opt-nav-bottom"><span>📱 Classic</span><span class="check" style="color:transparent;">●</span></div>
+            <div class="setting-row" id="opt-nav-left"><span>📱 LeftFlow</span><span class="check" style="color:transparent;">●</span></div>
         </div>
     </div>
 </div>
 
-<!-- ЭКРАН: ТРЕНДЫ -->
+<!-- ТРЕНДЫ -->
 <div class="screen" id="screen-trending">
     <div class="header">
         <span style="font-size:1.5rem;cursor:pointer;" onclick="showScreen('screen-feed')">←</span>
-        <h3>📈 Тренды</h3>
-        <div></div>
+        <h3>📈 Тренды</h3><div></div>
     </div>
-    <div id="trendingList" style="flex:1;overflow-y:auto;padding:16px;">
-        <p style="color:var(--text2);text-align:center;padding:40px;">Загрузка...</p>
-    </div>
+    <div id="trendingList" style="flex:1;overflow-y:auto;padding:16px;"></div>
 </div>
 
 <!-- МЕНЮ -->
 <nav class="bottom-nav" id="bottomNav">
-    <div class="nav-item active" data-screen="screen-feed" onclick="showScreen('screen-feed')"><span class="nav-icon">🏠</span><span>Лента</span></div>
-    <div class="nav-item" data-screen="screen-trending" onclick="showScreen('screen-trending')"><span class="nav-icon">📈</span><span>Тренды</span></div>
-    <div class="nav-item" data-screen="screen-auth" onclick="showScreen('screen-auth')"><span class="nav-icon">👤</span><span>Войти</span></div>
+    <div class="nav-item active" data-screen="screen-feed"><span class="nav-icon">🏠</span><span>Лента</span></div>
+    <div class="nav-item" data-screen="screen-trending"><span class="nav-icon">📈</span><span>Тренды</span></div>
+    <div class="nav-item" data-screen="screen-auth"><span class="nav-icon">👤</span><span>Войти</span></div>
 </nav>
 
 <script type="module">
@@ -208,60 +186,47 @@ const db = getFirestore(app);
 
 let currentUser = null;
 let allVideos = [];
-let settings = { theme: 'dark', accentColor: '#ff1744', navPos: 'right', autoClean: 30 };
+let settings = { theme: 'dark', accentColor: '#ff1744', navPos: 'right' };
 let sparkData = { days: 0, level: 1, bonusDays: 0 };
 
 // ===== УТИЛИТЫ =====
-function showToast(msg) {
+function toast(msg) {
     const t = document.getElementById('toastContainer');
     const el = document.createElement('div');
-    el.className = 'toast';
-    el.textContent = msg;
+    el.className = 'toast'; el.textContent = msg;
     t.appendChild(el);
     setTimeout(() => el.remove(), 2000);
 }
 
-window.showScreen = function(id) {
+function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const navItem = document.querySelector(`.nav-item[data-screen="${id}"]`);
-    if (navItem) navItem.classList.add('active');
+    const nav = document.querySelector(`.nav-item[data-screen="${id}"]`);
+    if (nav) nav.classList.add('active');
     if (id === 'screen-trending') loadTrending();
     if (id === 'screen-profile' && currentUser) loadProfile();
-};
+}
+window.showScreen = showScreen;
 
-window.setTheme = function(theme) {
-    document.body.classList.remove('theme-dark', 'theme-light', 'theme-amoled', 'theme-red');
-    document.body.classList.add('theme-' + theme);
-    settings.theme = theme;
+function updateChecks() {
     ['dark','light','amoled','red'].forEach(t => {
-        const el = document.getElementById('check-' + t);
-        if (el) el.style.color = t === theme ? 'var(--accent)' : 'transparent';
+        const el = document.getElementById('opt-' + t);
+        if (el) el.querySelector('.check').style.color = t === settings.theme ? 'var(--accent)' : 'transparent';
     });
-    saveSettings();
-};
-
-window.setNavPos = function(pos) {
-    document.body.classList.remove('nav-pos-right', 'nav-pos-bottom', 'nav-pos-left');
-    document.body.classList.add('nav-pos-' + pos);
-    settings.navPos = pos;
     ['right','bottom','left'].forEach(p => {
-        const el = document.getElementById('nav-' + p);
-        if (el) el.style.color = p === pos ? 'var(--accent)' : 'transparent';
+        const el = document.getElementById('opt-nav-' + p);
+        if (el) el.querySelector('.check').style.color = p === settings.navPos ? 'var(--accent)' : 'transparent';
     });
-    saveSettings();
-};
+}
 
 async function saveSettings() {
     if (!currentUser) return;
-    try {
-        await updateDoc(doc(db, 'users', currentUser.nickname), { settings: settings });
-    } catch(e) {}
+    await updateDoc(doc(db, 'users', currentUser.nickname), { settings });
 }
 
 // ===== АВТОРИЗАЦИЯ =====
-window.register = async function() {
+document.getElementById('btnRegister').addEventListener('click', async () => {
     const nick = document.getElementById('authNickname').value.trim().toLowerCase();
     const pass = document.getElementById('authPassword').value.trim();
     const msg = document.getElementById('authMsg');
@@ -273,14 +238,14 @@ window.register = async function() {
     if (snap.exists()) { msg.textContent = 'Ник занят!'; return; }
     await setDoc(doc(db, 'users', nick), {
         nickname: nick, password: pass, createdAt: serverTimestamp(),
-        likes: 0, likedVideos: [], settings: settings, spark: { days: 0, level: 1, bonusDays: 0 }
+        likes: 0, likedVideos: [], settings, spark: { days: 0, level: 1, bonusDays: 0 }
     });
     msg.style.color = '#4caf50';
-    msg.textContent = '✅ Аккаунт создан! Войди.';
+    msg.textContent = '✅ Аккаунт создан! Теперь войди.';
     document.getElementById('authPassword').value = '';
-};
+});
 
-window.login = async function() {
+document.getElementById('btnLogin').addEventListener('click', async () => {
     const nick = document.getElementById('authNickname').value.trim().toLowerCase();
     const pass = document.getElementById('authPassword').value.trim();
     const msg = document.getElementById('authMsg');
@@ -294,38 +259,38 @@ window.login = async function() {
     settings = data.settings || settings;
     sparkData = data.spark || { days: 0, level: 1, bonusDays: 0 };
     localStorage.setItem('reddrop_user', nick);
-    // Применить настройки
-    if (settings.theme) setTheme(settings.theme);
-    if (settings.navPos) setNavPos(settings.navPos);
-    document.documentElement.style.setProperty('--accent', settings.accentColor || '#ff1744');
-    msg.style.color = '#4caf50';
-    msg.textContent = '✅ Вход!';
+    applySettings();
     updateSpark();
     updateNavForAuth();
+    msg.style.color = '#4caf50';
+    msg.textContent = '✅ Вход выполнен!';
     setTimeout(() => showScreen('screen-feed'), 500);
     loadProfile();
-};
+});
 
-window.logout = function() {
+document.getElementById('btnLogout').addEventListener('click', () => {
     currentUser = null;
     localStorage.removeItem('reddrop_user');
     showScreen('screen-feed');
     updateNavForAuth();
-    showToast('Вы вышли');
-};
+    toast('Вы вышли');
+});
 
 function updateNavForAuth() {
-    const navItems = document.querySelectorAll('.nav-item');
-    const lastNav = navItems[navItems.length - 1];
+    const last = document.querySelectorAll('.nav-item')[2];
     if (currentUser) {
-        lastNav.setAttribute('data-screen', 'screen-profile');
-        lastNav.setAttribute('onclick', "showScreen('screen-profile')");
-        lastNav.innerHTML = '<span class="nav-icon">👤</span><span>Профиль</span>';
+        last.setAttribute('data-screen', 'screen-profile');
+        last.innerHTML = '<span class="nav-icon">👤</span><span>Профиль</span>';
     } else {
-        lastNav.setAttribute('data-screen', 'screen-auth');
-        lastNav.setAttribute('onclick', "showScreen('screen-auth')");
-        lastNav.innerHTML = '<span class="nav-icon">👤</span><span>Войти</span>';
+        last.setAttribute('data-screen', 'screen-auth');
+        last.innerHTML = '<span class="nav-icon">👤</span><span>Войти</span>';
     }
+}
+
+function applySettings() {
+    document.body.className = 'nav-pos-' + settings.navPos + ' theme-' + settings.theme;
+    document.documentElement.style.setProperty('--accent', settings.accentColor);
+    updateChecks();
 }
 
 function updateSpark() {
@@ -333,84 +298,93 @@ function updateSpark() {
     const now = new Date();
     const lastActive = currentUser.lastActive ? new Date(currentUser.lastActive) : now;
     const diffDays = Math.floor((now - lastActive) / (1000 * 60 * 60 * 24));
-    if (diffDays <= 1) sparkData.days = (sparkData.days || 0) + 1;
-    else sparkData.days = 1;
-    if (sparkData.days >= 140) sparkData.level = 5;
-    else if (sparkData.days >= 30) sparkData.level = 4;
-    else if (sparkData.days >= 14) sparkData.level = 3;
-    else if (sparkData.days >= 5) sparkData.level = 2;
-    else sparkData.level = 1;
+    sparkData.days = diffDays <= 1 ? (sparkData.days || 0) + 1 : 1;
+    sparkData.level = sparkData.days >= 140 ? 5 : sparkData.days >= 30 ? 4 : sparkData.days >= 14 ? 3 : sparkData.days >= 5 ? 2 : 1;
     sparkData.bonusDays = sparkData.days >= 140 ? 70 : 0;
     updateDoc(doc(db, 'users', currentUser.nickname), { spark: sparkData, lastActive: serverTimestamp() });
-    currentUser.spark = sparkData;
 }
 
 function loadProfile() {
     if (!currentUser) return;
     document.getElementById('profileName').textContent = currentUser.nickname;
-    document.getElementById('profileStatus').textContent = '✨ Spark: ур. ' + sparkData.level;
+    document.getElementById('profileStatus').textContent = 'Spark ур. ' + sparkData.level;
     document.getElementById('profileLikes').textContent = currentUser.likes || 0;
-    const progress = Math.min(100, (sparkData.days / 140) * 100);
-    document.getElementById('profileSparkBar').style.width = progress + '%';
-    document.getElementById('profileSpark').textContent = `Spark: ${sparkData.days} дн. +${sparkData.bonusDays} бонус`;
+    document.getElementById('profileSparkBar').style.width = Math.min(100, (sparkData.days / 140) * 100) + '%';
+    document.getElementById('profileSparkText').textContent = 'Spark: ' + sparkData.days + ' дн. +' + sparkData.bonusDays + ' бонус';
 }
 
-// ===== ЗАГРУЗКА ВИДЕО =====
+// ===== НАСТРОЙКИ =====
+document.getElementById('opt-dark').addEventListener('click', () => { settings.theme = 'dark'; applySettings(); saveSettings(); });
+document.getElementById('opt-light').addEventListener('click', () => { settings.theme = 'light'; applySettings(); saveSettings(); });
+document.getElementById('opt-amoled').addEventListener('click', () => { settings.theme = 'amoled'; applySettings(); saveSettings(); });
+document.getElementById('opt-red').addEventListener('click', () => { settings.theme = 'red'; applySettings(); saveSettings(); });
+document.getElementById('opt-nav-right').addEventListener('click', () => { settings.navPos = 'right'; applySettings(); saveSettings(); });
+document.getElementById('opt-nav-bottom').addEventListener('click', () => { settings.navPos = 'bottom'; applySettings(); saveSettings(); });
+document.getElementById('opt-nav-left').addEventListener('click', () => { settings.navPos = 'left'; applySettings(); saveSettings(); });
+
+document.getElementById('accentDots').addEventListener('click', (e) => {
+    if (e.target.classList.contains('color-dot')) {
+        settings.accentColor = e.target.dataset.color;
+        document.documentElement.style.setProperty('--accent', settings.accentColor);
+        document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+        e.target.classList.add('active');
+        saveSettings();
+    }
+});
+
+// ===== ВИДЕО =====
 async function loadFeed() {
-    const container = document.getElementById('feedContainer');
-    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📹</div><p>Загрузка...</p></div>';
+    document.getElementById('feedContainer').innerHTML = '<div class="empty-state"><div class="empty-icon">📹</div><p>Загрузка...</p></div>';
     allVideos = TEST_VIDEOS.map((url, i) => ({
-        id: 'test-' + i, url: url,
-        name: 'Видео #' + (i + 1) + ' #reddrop #тест',
-        hashtags: ['#reddrop', '#тест'], user: 'RedDrop'
+        id: 'test-' + i, url, name: 'Видео #' + (i + 1) + ' #reddrop', hashtags: ['#reddrop'], user: 'RedDrop'
     }));
     renderFeed();
 }
 
 function renderFeed() {
-    const container = document.getElementById('feedContainer');
-    container.innerHTML = '';
-    allVideos.forEach((video, index) => {
+    const c = document.getElementById('feedContainer');
+    c.innerHTML = '';
+    allVideos.forEach((v, i) => {
         const card = document.createElement('div');
-        card.className = 'video-card';
-        card.id = 'video-' + index;
-        card.innerHTML = `
-            <video src="${video.url}" loop muted playsinline preload="metadata"></video>
-            <div class="video-overlay"><div class="video-user">@${video.user}</div><div class="video-desc">${video.name}</div><div class="video-hashtags">${video.hashtags.join(' ')}</div></div>
+        card.className = 'video-card'; card.id = 'video-' + i;
+        card.innerHTML = `<video src="${v.url}" loop muted playsinline preload="metadata"></video>
+            <div class="video-overlay"><div class="video-user">@${v.user}</div><div class="video-desc">${v.name}</div><div class="video-hashtags">${v.hashtags.join(' ')}</div></div>
             <div class="video-actions">
-                <div class="action-btn" onclick="likeVideo('${video.id}', ${index})"><div class="action-icon" id="like-icon-${index}">❤️</div><span class="action-count" id="like-count-${index}">0</span></div>
-                <div class="action-btn" onclick="shareVideo('${video.url}')"><div class="action-icon">↗️</div><span class="action-count">Поделиться</span></div>
+                <div class="action-btn" id="btn-like-${i}"><div class="action-icon" id="like-icon-${i}">❤️</div><span class="action-count" id="like-count-${i}">0</span></div>
+                <div class="action-btn" id="btn-share-${i}"><div class="action-icon">↗️</div><span class="action-count">Поделиться</span></div>
             </div>`;
-        container.appendChild(card);
+        c.appendChild(card);
     });
-    setupVideoObserver();
+    document.querySelectorAll('.video-card').forEach(card => {
+        new IntersectionObserver((e) => {
+            const v = card.querySelector('video');
+            if (e[0].isIntersecting) v.play().catch(() => {});
+            else v.pause();
+        }, { threshold: 0.7 }).observe(card);
+    });
+    // Привязываем лайки и шару
+    allVideos.forEach((v, i) => {
+        document.getElementById('btn-like-' + i).addEventListener('click', () => likeVideo(v.id, i));
+        document.getElementById('btn-share-' + i).addEventListener('click', () => {
+            if (navigator.share) navigator.share({ title: 'RedDrop', url: v.url });
+            else { navigator.clipboard.writeText(v.url); toast('📋 Ссылка скопирована!'); }
+        });
+    });
     loadVideoStats();
 }
 
-function setupVideoObserver() {
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            const video = entry.target.querySelector('video');
-            if (!video) return;
-            if (entry.isIntersecting) video.play().catch(() => {});
-            else video.pause();
-        });
-    }, { threshold: 0.7 });
-    document.querySelectorAll('.video-card').forEach(card => observer.observe(card));
-}
-
 async function loadVideoStats() {
-    allVideos.forEach(async (video, index) => {
-        const snap = await getDoc(doc(db, 'videostats', video.id));
+    allVideos.forEach(async (v, i) => {
+        const snap = await getDoc(doc(db, 'videostats', v.id));
         if (snap.exists()) {
-            const el = document.getElementById('like-count-' + index);
+            const el = document.getElementById('like-count-' + i);
             if (el) el.textContent = snap.data().likes || 0;
         }
     });
 }
 
-window.likeVideo = async function(videoId, index) {
-    if (!currentUser) { showToast('⚠️ Войди, чтобы лайкать!'); return; }
+async function likeVideo(videoId, index) {
+    if (!currentUser) { toast('⚠️ Войди, чтобы лайкать!'); return; }
     const icon = document.getElementById('like-icon-' + index);
     const countEl = document.getElementById('like-count-' + index);
     const statsRef = doc(db, 'videostats', videoId);
@@ -421,7 +395,6 @@ window.likeVideo = async function(videoId, index) {
         await updateDoc(statsRef, { likes: increment(-1) });
         await updateDoc(userRef, { likedVideos: arrayRemove(videoId), likes: increment(-1) });
         currentUser.likedVideos = currentUser.likedVideos.filter(id => id !== videoId);
-        currentUser.likes = Math.max(0, (currentUser.likes || 1) - 1);
         countEl.textContent = Math.max(0, parseInt(countEl.textContent) - 1);
     } else {
         icon.style.color = 'var(--accent)';
@@ -429,67 +402,45 @@ window.likeVideo = async function(videoId, index) {
         await updateDoc(userRef, { likedVideos: arrayUnion(videoId), likes: increment(1) });
         if (!currentUser.likedVideos) currentUser.likedVideos = [];
         currentUser.likedVideos.push(videoId);
-        currentUser.likes = (currentUser.likes || 0) + 1;
         countEl.textContent = parseInt(countEl.textContent) + 1;
     }
-};
-
-window.shareVideo = function(url) {
-    if (navigator.share) navigator.share({ title: 'RedDrop', url: url });
-    else { navigator.clipboard.writeText(url); showToast('📋 Ссылка скопирована!'); }
-};
+}
 
 async function loadTrending() {
-    const container = document.getElementById('trendingList');
+    const c = document.getElementById('trendingList');
     try {
         const q = query(collection(db, 'videostats'), orderBy('likes', 'desc'), limit(20));
         const snap = await getDocs(q);
-        container.innerHTML = '';
-        if (snap.empty) { container.innerHTML = '<p style="color:var(--text2);text-align:center;padding:40px;">Пока нет трендов</p>'; return; }
-        snap.forEach(doc => {
-            const data = doc.data();
+        c.innerHTML = '';
+        if (snap.empty) { c.innerHTML = '<p style="color:var(--text2);text-align:center;padding:40px;">Нет трендов</p>'; return; }
+        snap.forEach(d => {
+            const data = d.data();
             const div = document.createElement('div');
-            div.style.cssText = 'padding:12px;background:var(--surface);border-radius:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;';
-            div.innerHTML = `<span>🎬 ${data.videoId || 'Видео'}</span><span>❤️ ${data.likes || 0}</span>`;
-            container.appendChild(div);
+            div.style.cssText = 'padding:12px;background:var(--surface);border-radius:12px;margin-bottom:8px;display:flex;justify-content:space-between;';
+            div.innerHTML = `<span>🎬 ${data.videoId||'Видео'}</span><span>❤️ ${data.likes||0}</span>`;
+            c.appendChild(div);
         });
-    } catch(e) { container.innerHTML = '<p style="color:var(--text2);text-align:center;padding:40px;">Ошибка</p>'; }
+    } catch(e) { c.innerHTML = '<p style="color:var(--text2);text-align:center;padding:40px;">Ошибка</p>'; }
 }
-
-// ===== ЦВЕТ АКЦЕНТА =====
-document.getElementById('accentDots').addEventListener('click', (e) => {
-    if (e.target.classList.contains('color-dot')) {
-        const color = e.target.dataset.color;
-        document.documentElement.style.setProperty('--accent', color);
-        settings.accentColor = color;
-        document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
-        e.target.classList.add('active');
-        saveSettings();
-    }
-});
 
 // ===== ИНИЦИАЛИЗАЦИЯ =====
 async function init() {
-    const savedUser = localStorage.getItem('reddrop_user');
-    if (savedUser) {
-        const snap = await getDoc(doc(db, 'users', savedUser));
+    const saved = localStorage.getItem('reddrop_user');
+    if (saved) {
+        const snap = await getDoc(doc(db, 'users', saved));
         if (snap.exists()) {
-            currentUser = { nickname: savedUser, ...snap.data() };
+            currentUser = { nickname: saved, ...snap.data() };
             settings = currentUser.settings || settings;
-            sparkData = currentUser.spark || { days: 0, level: 1, bonusDays: 0 };
-            if (settings.theme) setTheme(settings.theme);
-            if (settings.navPos) setNavPos(settings.navPos);
-            document.documentElement.style.setProperty('--accent', settings.accentColor || '#ff1744');
+            sparkData = currentUser.spark || sparkData;
+            applySettings();
             updateSpark();
             updateNavForAuth();
         }
     }
     loadFeed();
 }
-
 init();
-console.log('🔴 RedDrop с настройками готов!');
+console.log('🔴 RedDrop готов!');
 </script>
-
 </body>
 </html>
