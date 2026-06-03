@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>🔴 RedDrop</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --surface: #141414;
+            --surface2: #1e1e1e;
+            --text: #ffffff;
+            --text2: #a0a0a0;
+            --accent: #ff1744;
+            --accent2: #b71c1c;
+            --accent-glow: rgba(255,23,68,0.3);
+            --menu-pos: right;
+            --font-size: 16px;
+            --btn-style: icon;
+            --safe-bottom: env(safe-area-inset-bottom, 16px);
+            --safe-top: env(safe-area-inset-top, 16px);
+            --safe-left: env(safe-area-inset-left, 16px);
+            --safe-right: env(safe-area-inset-right, 16px);
+        }
+        .theme-light { --bg: #f5f5f5; --surface: #ffffff; --surface2: #e8e8e8; --text: #1a1a1a; --text2: #666666; --accent-glow: rgba(255,23,68,0.15); }
+        .theme-amoled { --bg: #000000; --surface: #0a0a0a; --surface2: #111111; }
+        .theme-red { --bg: #0d0002; --surface: #1a0005; --surface2: #220008; --accent: #ff2255; }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh; height: 100dvh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            font-size: var(--font-size);
+            transition: background 0.3s, color 0.3s;
+        }
+
+        /* ЭКРАНЫ */
+        .screen {
+            position: absolute; inset: 0;
+            display: none; flex-direction: column;
+            background: var(--bg);
+            padding-top: var(--safe-top);
+            padding-bottom: var(--safe-bottom);
+            padding-left: var(--safe-left);
+            padding-right: var(--safe-right);
+            transition: background 0.3s;
+        }
+        .screen.active { display: flex; }
+
+        /* ШАПКА */
+        .header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 16px; z-index: 10; flex-shrink: 0;
+            background: var(--bg);
+        }
+        .header-logo { font-size: 1.5rem; font-weight: 900; letter-spacing: -1px; }
+        .header-logo .red { color: var(--accent); }
+        .header-icons { display: flex; gap: 16px; align-items: center; }
+        .header-icons span { font-size: 1.3rem; cursor: pointer; padding: 4px; }
+
+        /* ЛЕНТА */
+        .feed-container {
+            flex: 1; overflow-y: scroll; scroll-snap-type: y mandatory;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+        }
+        .feed-container::-webkit-scrollbar { display: none; }
+        .video-card {
+            height: calc(100vh - 56px - var(--safe-top) - var(--safe-bottom));
+            height: calc(100dvh - 56px - var(--safe-top) - var(--safe-bottom));
+            scroll-snap-align: start;
+            position: relative; display: flex; align-items: center; justify-content: center;
+            background: #000;
+        }
+        .video-card video {
+            width: 100%; height: 100%; object-fit: contain;
+            background: #000;
+        }
+        .video-overlay {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            padding: 20px 16px 100px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.7));
+            pointer-events: none;
+        }
+        .video-user { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+        .video-desc { font-size: 0.85rem; color: #ccc; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .video-hashtags { font-size: 0.8rem; color: var(--accent); font-weight: 600; }
+        .video-actions {
+            position: absolute; right: 12px; bottom: 120px;
+            display: flex; flex-direction: column; gap: 20px; align-items: center;
+            z-index: 5;
+        }
+        .action-btn {
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+            cursor: pointer; pointer-events: all;
+        }
+        .action-icon {
+            width: 44px; height: 44px; border-radius: 50%;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; transition: transform 0.2s, background 0.2s;
+        }
+        .action-icon:active { transform: scale(0.9); }
+        .action-icon.liked { color: var(--accent); animation: heartPulse 0.4s ease; }
+        .action-count { font-size: 0.75rem; font-weight: 600; color: #fff; }
+        @keyframes heartPulse {
+            0% { transform: scale(1); } 30% { transform: scale(1.3); } 100% { transform: scale(1); }
+        }
+        .action-icon.reposted { color: #4fc3f7; }
+
+        /* МЕНЮ — RightFlow (по умолчанию справа) */
+        .bottom-nav {
+            position: fixed;
+            z-index: 100;
+            display: flex; gap: 4px;
+            background: var(--surface); border: 1px solid var(--surface2);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            transition: all 0.3s;
+        }
+        /* Справа */
+        .nav-pos-right .bottom-nav { right: 8px; top: 50%; transform: translateY(-50%); flex-direction: column; border-radius: 28px; padding: 8px 6px; }
+        /* Снизу */
+        .nav-pos-bottom .bottom-nav { bottom: calc(8px + var(--safe-bottom)); left: 50%; transform: translateX(-50%); flex-direction: row; border-radius: 28px; padding: 6px 12px; }
+        /* Слева */
+        .nav-pos-left .bottom-nav { left: 8px; top: 50%; transform: translateY(-50%); flex-direction: column; border-radius: 28px; padding: 8px 6px; }
+        /* Плавающее */
+        .nav-pos-float .bottom-nav { right: 16px; bottom: calc(80px + var(--safe-bottom)); flex-direction: column; border-radius: 20px; padding: 6px; cursor: grab; }
+
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+            padding: 8px 10px; border-radius: 20px; cursor: pointer;
+            transition: all 0.2s; color: var(--text2); text-decoration: none;
+            font-size: 0.65rem; font-weight: 500; white-space: nowrap;
+        }
+        .nav-pos-right .nav-item, .nav-pos-left .nav-item { padding: 10px 8px; }
+        .nav-item.active { color: var(--accent); }
+        .nav-item .nav-icon { font-size: 1.3rem; transition: transform 0.2s; }
+        .nav-item:active .nav-icon { transform: scale(0.85); }
+
+        /* ЭКРАНЫ */
+        .profile-header { text-align: center; padding: 24px 16px; }
+        .profile-avatar {
+            width: 80px; height: 80px; border-radius: 50%; background: var(--surface2);
+            margin: 0 auto 12px; display: flex; align-items: center; justify-content: center;
+            font-size: 2.5rem; border: 3px solid var(--accent);
+        }
+        .profile-spark {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: var(--surface2); padding: 8px 16px; border-radius: 20px;
+            margin: 8px 0; font-weight: 700;
+        }
+        .spark-bar {
+            width: 80px; height: 6px; background: var(--surface); border-radius: 3px; overflow: hidden;
+        }
+        .spark-fill {
+            height: 100%; background: linear-gradient(90deg, #ff6d00, #ff1744);
+            border-radius: 3px; transition: width 0.5s;
+        }
+
+        .settings-group { padding: 0 16px; margin-bottom: 20px; }
+        .settings-label { font-size: 0.75rem; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; padding-left: 4px; }
+        .setting-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 16px; background: var(--surface); border-radius: 14px;
+            margin-bottom: 6px; cursor: pointer; transition: background 0.2s;
+        }
+        .setting-row:active { background: var(--surface2); }
+        .setting-row .s-icon { margin-right: 12px; font-size: 1.2rem; }
+        .color-dots { display: flex; gap: 8px; }
+        .color-dot {
+            width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+            border: 2px solid transparent; transition: all 0.2s;
+        }
+        .color-dot.active { border-color: var(--text); transform: scale(1.15); }
+
+        .btn {
+            background: var(--accent); color: #fff; border: none;
+            padding: 12px 24px; border-radius: 24px; font-weight: 700;
+            font-size: 0.9rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn-outline {
+            background: transparent; border: 2px solid var(--accent);
+            color: var(--accent); box-shadow: none;
+        }
+
+        .toast {
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+            background: var(--accent); color: #fff; padding: 10px 24px;
+            border-radius: 24px; font-weight: 700; z-index: 200;
+            animation: toastIn 0.3s ease, toastOut 0.3s ease 1.7s forwards;
+            pointer-events: none;
+        }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        @keyframes toastOut { from { opacity: 1; } to { opacity: 0; } }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text2); }
+        .empty-icon { font-size: 4rem; margin-bottom: 16px; }
+
+        .login-btn {
+            display: flex; align-items: center; gap: 10px;
+            background: #fff; color: #1a1a1a; border: none;
+            padding: 14px 28px; border-radius: 28px; font-weight: 700;
+            font-size: 1rem; cursor: pointer; margin: 20px auto;
+            transition: transform 0.2s;
+        }
+        .login-btn:active { transform: scale(0.95); }
+
+        /* Стиль для кнопок с подписями */
+        .btn-style-label .nav-item { flex-direction: row; gap: 8px; font-size: 0.8rem; }
+    </style>
+</head>
+<body class="nav-pos-right theme-dark"> <!-- ===== ТОСТЫ ===== -->
+<div id="toastContainer"></div>
+
+<!-- ===== ЭКРАН: ЗАГРУЗКА ===== -->
+<div class="screen active" id="screen-loading" style="align-items:center;justify-content:center;gap:16px;">
+    <div style="font-size:3rem;">🔴</div>
+    <div style="font-size:2rem;font-weight:900;">RedDrop</div>
+    <div style="color:var(--text2);">Загрузка...</div>
+</div>
+
+<!-- ===== ЭКРАН: ЛОГИН ===== -->
+<div class="screen" id="screen-login" style="align-items:center;justify-content:center;">
+    <div style="font-size:4rem;">🔴</div>
+    <h1 style="font-size:2.5rem;font-weight:900;margin:12px 0;">RedDrop</h1>
+    <p style="color:var(--text2);margin-bottom:24px;text-align:center;padding:0 20px;">Красная капля. Твой контент.<br>Твои правила.</p>
+    <button class="login-btn" onclick="loginWithGoogle()">
+        <span style="font-size:1.2rem;">G</span> Войти через Google
+    </button>
+</div>
+
+<!-- ===== ЭКРАН: ЛЕНТА ===== -->
+<div class="screen" id="screen-feed">
+    <div class="header">
+        <div class="header-logo"><span class="red">🔴</span> RedDrop</div>
+        <div class="header-icons">
+            <span onclick="showScreen('screen-trending')" title="Тренды">📈</span>
+            <span onclick="showScreen('screen-notifications')" title="Уведомления">🔔<sup id="notif-badge" style="display:none;color:var(--accent);font-size:0.6rem;font-weight:900;">●</sup></span>
+            <span onclick="showScreen('screen-search')" title="Поиск">🔍</span>
+        </div>
+    </div>
+    <div class="feed-container" id="feedContainer">
+        <div class="empty-state"><div class="empty-icon">📹</div><p>Видео загружаются...</p></div>
+    </div>
+</div>
+
+<!-- ===== ЭКРАН: ПОИСК ===== -->
+<div class="screen" id="screen-search">
+    <div class="header">
+        <span style="font-size:1.5rem;cursor:pointer;" onclick="showScreen('screen-feed')">←</span>
+        <input type="text" id="searchInput" placeholder="Поиск по хештегам..." style="flex:1;margin:0 12px;padding:10px 16px;border-radius:20px;border:none;background:var(--surface2);color:var(--text);font-size:0.95rem;outline:none;" oninput="searchHashtags()">
+        <span style="font-size:1.3rem;">🔍</span>
+    </div>
+    <div id="searchResults" style="flex:1;overflow-y:auto;padding:16px;">
+        <p style="color:var(--text2);text-align:center;padding:40px;">Введи хештег для поиска</p>
+    </div>
+</div>
+
+<!-- ===== ЭКРАН: ТРЕНДЫ ===== -->
+<div class="screen" id="screen-trending">
+    <div class="header">
+        <span style="font-size:1.5rem;cursor:pointer;" onclick="showScreen('screen-feed')">←</span>
+        <h3>📈 Тренды</h3>
+        <div></div>
+    </div>
+    <div id="trendingList" style="flex:1;overflow-y:auto;padding:16px;">
+        <p style="color:var(--text2);text-align:center;padding:40px;">Загрузка трендов...</p>
+    </div>
+</div>
+
+<!-- ===== ЭКРАН: УВЕДОМЛЕНИЯ ===== -->
+<div class="screen" id="screen-notifications">
+    <div class="header">
+        <span style="font-size:1.5rem;cursor:pointer;" onclick="showScreen('screen-feed')">←</span>
+        <h3>🔔 Уведомления</h3>
+        <div></div>
+    </div>
+    <div id="notificationsList" style="flex:1;overflow-y:auto;padding:16px;">
+        <p style="color:var(--text2);text-align:center;padding:40px;">Пока нет уведомлений</p>
+    </div>
+</div>
+
+<!-- ===== ЭКРАН: ПРОФИЛЬ ===== -->
+<div class="screen" id="screen-profile">
+    <div class="header">
+        <span style="font-size:1.5rem;cursor:pointer;" onclick="showScreen('screen-feed')">←</span>
+        <h3>Мой профиль</h3>
+        <span style="font-size:1.3rem;cursor:pointer;" onclick="showScreen('screen-settings')">⚙️</span>
+    </div>
+    <div style="flex:1;overflow-y:auto;">
+        <div class="profile-header">
+            <div class="profile-avatar" id="profileAvatar">👤</div>
+            <h2 id="profileName">Пользователь</h2>
+            <p style="color:var(--text2);" id="profileStatus">✨ Новый пользователь RedDrop</p>
+            <div class="profile-spark">
+                🔥 <span id="profileSpark">Spark: загрузка...</span>
+                <div class="spark-bar"><div class="spark-fill" id="profileSparkBar" style="width:0%"></div></div>
+            </div>
+            <div style="display:flex;gap:20px;justify-content:center;margin:12px 0;">
+                <div><strong id="profileFollowers">0</strong><br><small style="color:var(--text2);">Подписчики</small></div>
+                <div><strong id="profileFollowing">0</strong><br><small style="color:var(--text2);">Подписки</small></div>
+                <div><strong id="profileLikes">0</strong><br><small style="color:var(--text2);">Лайки</small></div>
+            </div>
+            <button class="btn btn-outline" onclick="logout()">Выйти</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== ЭКРАН: НАСТРОЙКИ ===== -->
+<div class="screen" id="screen-settings">
+    <div class="header">
+        <span style="font-size:1.5rem;cursor:pointer;" onclick="showScreen('screen-profile')">←</span>
+        <h3>⚙️ Настройки</h3>
+        <div></div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding-bottom:40px;">
+        <div class="settings-group">
+            <div class="settings-label">🎨 Тема</div>
+            <div class="setting-row" onclick="setTheme('dark')"><span>🌙 Тёмная</span><span id="check-dark" style="color:var(--accent);">●</span></div>
+            <div class="setting-row" onclick="setTheme('light')"><span>☀️ Светлая</span><span id="check-light" style="color:transparent;">●</span></div>
+            <div class="setting-row" onclick="setTheme('amoled')"><span>⬛ AMOLED</span><span id="check-amoled" style="color:transparent;">●</span></div>
+            <div class="setting-row" onclick="setTheme('red')"><span>🔴 Красная</span><span id="check-red" style="color:transparent;">●</span></div>
+        </div>
+        <div class="settings-group">
+            <div class="settings-label">🔴 Цвет акцента</div>
+            <div class="setting-row">
+                <div class="color-dots" id="accentDots">
+                    <div class="color-dot active" style="background:#ff1744;" data-color="#ff1744"></div>
+                    <div class="color-dot" style="background:#ff6d00;" data-color="#ff6d00"></div>
+                    <div class="color-dot" style="background:#ff4081;" data-color="#ff4081"></div>
+                    <div class="color-dot" style="background:#e040fb;" data-color="#e040fb"></div>
+                    <div class="color-dot" style="background:#448aff;" data-color="#448aff"></div>
+                </div>
+            </div>
+        </div>
+        <div class="settings-group">
+            <div class="settings-label">📍 Положение меню</div>
+            <div class="setting-row" onclick="setNavPos('right')"><span>📱 RightFlow (справа)</span><span id="nav-right" style="color:var(--accent);">●</span></div>
+            <div class="setting-row" onclick="setNavPos('bottom')"><span>📱 Classic (снизу)</span><span id="nav-bottom" style="color:transparent;">●</span></div>
+            <div class="setting-row" onclick="setNavPos('left')"><span>📱 LeftFlow (слева)</span><span id="nav-left" style="color:transparent;">●</span></div>
+            <div class="setting-row" onclick="setNavPos('float')"><span>🫧 Orbital (плавающее)</span><span id="nav-float" style="color:transparent;">●</span></div>
+        </div>
+        <div class="settings-group">
+            <div class="settings-label">🧹 Автоочистка (дней неактивности)</div>
+            <div class="setting-row" onclick="setAutoClean(7)"><span>7 дней</span><span id="clean-7" style="color:transparent;">●</span></div>
+            <div class="setting-row" onclick="setAutoClean(14)"><span>14 дней</span><span id="clean-14" style="color:transparent;">●</span></div>
+            <div class="setting-row" onclick="setAutoClean(30)"><span>30 дней</span><span id="clean-30" style="color:var(--accent);">●</span></div>
+            <div class="setting-row" onclick="setAutoClean(100)" id="clean-100-row"><span>100 дней 🔒 (нужен Spark 140)</span><span id="clean-100" style="color:transparent;">●</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== НАВИГАЦИЯ ===== -->
+<nav class="bottom-nav" id="bottomNav">
+    <div class="nav-item active" data-screen="screen-feed" onclick="showScreen('screen-feed')">
+        <span class="nav-icon">🏠</span><span>Лента</span>
+    </div>
+    <div class="nav-item" data-screen="screen-search" onclick="showScreen('screen-search')">
+        <span class="nav-icon">🔍</span><span>Поиск</span>
+    </div>
+    <div class="nav-item" data-screen="screen-trending" onclick="showScreen('screen-trending')">
+        <span class="nav-icon">📈</span><span>Тренды</span>
+    </div>
+    <div class="nav-item" data-screen="screen-notifications" onclick="showScreen('screen-notifications')">
+        <span class="nav-icon">🔔</span><span>Ув-я</span>
+    </div>
+    <div class="nav-item" data-screen="screen-profile" onclick="showScreen('screen-profile')">
+        <span class="nav-icon">👤</span><span>Профиль</span>
+    </div>
+</nav>
+<!-- ===== FIREBASE SDK ===== -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, orderBy, limit, onSnapshot, arrayUnion, arrayRemove, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+// ===== КОНФИГУРАЦИЯ =====
+const firebaseConfig = {
+    apiKey: "AIzaSyB6fBY4PTUm116OsfoHmM027Q-B-ZdVftE",
+    authDomain: "reddrop-36645.firebaseapp.com",
+    projectId: "reddrop-36645",
+    storageBucket: "reddrop-36645.firebasestorage.app",
+    messagingSenderId: "447748198544",
+    appId: "1:447748198544:web:0037c9c0a6ec9249fec815"
+};
+
+const DROPBOX_TOKEN = "sl.u.AGhkbS_Pr6LhYQKGSgE49ZAya87vNpUsc4jOVnmKqA-UXtNm7Pa4fAeyGA00plub";
+
+// Тестовые видео (прямые ссылки MP4, CC0)
+const TEST_VIDEOS = [
+    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4"
+];
+
+// ===== ИНИЦИАЛИЗАЦИЯ =====
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+// ===== ГЛОБАЛЬНОЕ СОСТОЯНИЕ =====
+let currentUser = null;
+let currentUserData = null;
+let allVideos = [];
+let currentVideoIndex = 0;
+let userSettings = {
+    theme: 'dark',
+    accentColor: '#ff1744',
+    navPos: 'right',
+    autoClean: 30,
+    fontSize: 16,
+    btnStyle: 'icon'
+};
+let sparkData = { days: 0, level: 1, bonusDays: 0 };
+
+// ===== УТИЛИТЫ =====
+function showToast(msg) {
+    const t = document.getElementById('toastContainer');
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    t.appendChild(el);
+    setTimeout(() => el.remove(), 2000);
+}
+
+function formatTime(ts) {
+    if (!ts) return 'неизвестно';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    const now = new Date();
+    const diff = Math.floor((now - d) / 1000);
+    if (diff < 60) return 'только что';
+    if (diff < 3600) return Math.floor(diff / 60) + 'м назад';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'ч назад';
+    return Math.floor(diff / 86400) + 'д назад';
+}
+
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const target = document.getElementById(screenId);
+    if (target) target.classList.add('active');
+    // Обновить активную кнопку меню
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const navItem = document.querySelector(`.nav-item[data-screen="${screenId}"]`);
+    if (navItem) navItem.classList.add('active');
+    // Действия при смене экрана
+    if (screenId === 'screen-trending') loadTrending();
+    if (screenId === 'screen-notifications') loadNotifications();
+    if (screenId === 'screen-profile' && currentUser) loadProfile();
+}
+
+function setTheme(theme) {
+    document.body.classList.remove('theme-dark', 'theme-light', 'theme-amoled', 'theme-red');
+    document.body.classList.add('theme-' + theme);
+    userSettings.theme = theme;
+    ['dark','light','amoled','red'].forEach(t => {
+        const el = document.getElementById('check-' + t);
+        if (el) el.style.color = t === theme ? 'var(--accent)' : 'transparent';
+    });
+    saveSettings();
+}
+
+function setNavPos(pos) {
+    document.body.classList.remove('nav-pos-right', 'nav-pos-bottom', 'nav-pos-left', 'nav-pos-float');
+    document.body.classList.add('nav-pos-' + pos);
+    userSettings.navPos = pos;
+    ['right','bottom','left','float'].forEach(p => {
+        const el = document.getElementById('nav-' + p);
+        if (el) el.style.color = p === pos ? 'var(--accent)' : 'transparent';
+    });
+    saveSettings();
+}
+
+function setAutoClean(days) {
+    if (days === 100 && sparkData.days < 140) {
+        showToast('🔒 Нужен Spark 140 дней!');
+        return;
+    }
+    userSettings.autoClean = days;
+    [7,14,30,100].forEach(d => {
+        const el = document.getElementById('clean-' + d);
+        if (el) el.style.color = d === days ? 'var(--accent)' : 'transparent';
+    });
+    saveSettings();
+}
+
+async function saveSettings() {
+    if (!currentUser) return;
+    try {
+        await setDoc(doc(db, 'users', currentUser.uid), {
+            settings: userSettings,
+            lastActive: serverTimestamp()
+        }, { merge: true });
+    } catch(e) { console.error('Save settings error:', e); }
+}
+
+// ===== АВТОРИЗАЦИЯ =====
+async function loginWithGoogle() {
+    try {
+        const result = await signInWithPopup(auth, provider);
+        currentUser = result.user;
+        await initUserData();
+        showScreen('screen-feed');
+        loadFeed();
+        showToast('🔥 Добро пожаловать в RedDrop!');
+    } catch(e) {
+        console.error('Login error:', e);
+        showToast('⚠️ Ошибка входа');
+    }
+}
+
+async function logout() {
+    try {
+        await signOut(auth);
+        currentUser = null;
+        currentUserData = null;
+        showScreen('screen-login');
+    } catch(e) { console.error('Logout error:', e); }
+}
+
+async function initUserData() {
+    if (!currentUser) return;
+    const userRef = doc(db, 'users', currentUser.uid);
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+        const data = snap.data();
+        currentUserData = data;
+        userSettings = data.settings || userSettings;
+        sparkData = data.spark || { days: 0, level: 1, bonusDays: 0 };
+        // Применить настройки
+        if (userSettings.theme) setTheme(userSettings.theme);
+        if (userSettings.navPos) setNavPos(userSettings.navPos);
+        document.documentElement.style.setProperty('--accent', userSettings.accentColor || '#ff1744');
+    } else {
+        // Новый пользователь
+        currentUserData = {
+            name: currentUser.displayName || 'Пользователь',
+            email: currentUser.email,
+            avatar: currentUser.photoURL || '',
+            status: '✨ Новый пользователь RedDrop',
+            followers: [],
+            following: [],
+            likes: 0,
+            likedVideos: [],
+            repostedVideos: [],
+            settings: userSettings,
+            spark: { days: 0, level: 1, bonusDays: 0 },
+            createdAt: serverTimestamp(),
+            lastActive: serverTimestamp()
+        };
+        await setDoc(userRef, currentUserData);
+    }
+    // Обновить lastActive
+    await updateDoc(userRef, { lastActive: serverTimestamp() });
+    // Проверить Spark
+    updateSpark();
+}
+
+function updateSpark() {
+    if (!currentUserData) return;
+    const now = new Date();
+    const lastActive = currentUserData.lastActive ? currentUserData.lastActive.toDate() : now;
+    const diffDays = Math.floor((now - lastActive) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays <= 1) {
+        // Не прерывали цепочку
+        sparkData.days = (sparkData.days || 0) + 1;
+    } else if (diffDays > 1) {
+        // Прервали — сброс
+        sparkData.days = 1;
+    }
+    
+    if (sparkData.days >= 140) sparkData.level = 5;
+    else if (sparkData.days >= 30) sparkData.level = 4;
+    else if (sparkData.days >= 14) sparkData.level = 3;
+    else if (sparkData.days >= 5) sparkData.level = 2;
+    else sparkData.level = 1;
+    
+    sparkData.bonusDays = sparkData.days >= 140 ? 70 : 0;
+    
+    const userRef = doc(db, 'users', currentUser.uid);
+    updateDoc(userRef, { spark: sparkData, lastActive: serverTimestamp() });
+    currentUserData.spark = sparkData;
+}
+
+// ===== ЗАГРУЗКА ВИДЕО =====
+async function loadFeed() {
+    const container = document.getElementById('feedContainer');
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📹</div><p>Загрузка видео...</p></div>';
+    
+    // Сначала пробуем Dropbox
+    let videos = [];
+    try {
+        const response = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + DROPBOX_TOKEN,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ path: '', limit: 50 })
+        });
+        if (response.ok) {
+            const data = await response.json();
+            const mp4Files = data.entries.filter(f => f.name.endsWith('.mp4'));
+            // Получаем прямые ссылки для каждого
+            for (const file of mp4Files) {
+                try {
+                    const linkRes = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + DROPBOX_TOKEN,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ path: file.path_lower })
+                    });
+                    if (linkRes.ok) {
+                        const linkData = await linkRes.json();
+                        const directUrl = linkData.url.replace('?dl=0', '?raw=1');
+                        videos.push({
+                            id: file.id,
+                            url: directUrl,
+                            name: file.name.replace('.mp4', ''),
+                            hashtags: extractHashtags(file.name),
+                            user: 'Dropbox',
+                            userId: 'dropbox'
+                        });
+                    }
+                } catch(e) {}
+            }
+        }
+    } catch(e) {
+        console.log('Dropbox fetch failed, using test videos');
+    }
+    
+    // Если Dropbox пуст — тестовые видео
+    if (videos.length === 0) {
+        videos = TEST_VIDEOS.map((url, i) => ({
+            id: 'test-' + i,
+            url: url,
+            name: 'Тестовое видео #' + (i + 1),
+            hashtags: ['#тест', '#reddrop'],
+            user: 'RedDrop',
+            userId: 'system'
+        }));
+    }
+    
+    allVideos = videos;
+    renderFeed();
+}
+
+function extractHashtags(filename) {
+    const matches = filename.match(/#(\w+)/g);
+    return matches ? matches.map(m => m.toLowerCase()) : ['#reddrop'];
+}
+
+function renderFeed() {
+    const container = document.getElementById('feedContainer');
+    container.innerHTML = '';
+    
+    if (allVideos.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">📹</div><p>Нет видео. Загрузи первое!</p></div>';
+        return;
+    }
+    
+    allVideos.forEach((video, index) => {
+        const card = document.createElement('div');
+        card.className = 'video-card';
+        card.id = 'video-' + index;
+        
+        const isLiked = currentUserData?.likedVideos?.includes(video.id);
+        const isReposted = currentUserData?.repostedVideos?.includes(video.id);
+        
+        card.innerHTML = `
+            <video src="${video.url}" loop muted playsinline preload="metadata"></video>
+            <div class="video-overlay">
+                <div class="video-user">@${video.user}</div>
+                <div class="video-desc">${video.name}</div>
+                <div class="video-hashtags">${video.hashtags.join(' ')}</div>
+            </div>
+            <div class="video-actions">
+                <div class="action-btn" onclick="likeVideo('${video.id}', ${index})">
+                    <div class="action-icon ${isLiked ? 'liked' : ''}" id="like-icon-${index}">❤️</div>
+                    <span class="action-count" id="like-count-${index}">0</span>
+                </div>
+                <div class="action-btn" onclick="repostVideo('${video.id}', ${index})">
+                    <div class="action-icon ${isReposted ? 'reposted' : ''}" id="repost-icon-${index}">🔄</div>
+                    <span class="action-count" id="repost-count-${index}">0</span>
+                </div>
+                <div class="action-btn" onclick="shareVideo('${video.url}')">
+                    <div class="action-icon">↗️</div>
+                    <span class="action-count">Поделиться</span>
+                </div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+    
+    // Ленивая загрузка видео при скролле
+    setupVideoObserver();
+    loadVideoStats();
+}
+
+function setupVideoObserver() {
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const video = entry.target.querySelector('video');
+            if (!video) return;
+            if (entry.isIntersecting) {
+                video.play().catch(() => {});
+                // Определить индекс текущего видео
+                const index = parseInt(entry.target.id.replace('video-', ''));
+                currentVideoIndex = index;
+            } else {
+                video.pause();
+            }
+        });
+    }, { threshold: 0.7 });
+    
+    document.querySelectorAll('.video-card').forEach(card => observer.observe(card));
+}
+
+async function loadVideoStats() {
+    // Загружаем счётчики лайков/репостов из Firebase
+    allVideos.forEach(async (video, index) => {
+        const statsRef = doc(db, 'videostats', video.id);
+        const snap = await getDoc(statsRef);
+        if (snap.exists()) {
+            const data = snap.data();
+            const likeEl = document.getElementById('like-count-' + index);
+            const repostEl = document.getElementById('repost-count-' + index);
+            if (likeEl) likeEl.textContent = data.likes || 0;
+            if (repostEl) repostEl.textContent = data.reposts || 0;
+        }
+    });
+}
+
+async function likeVideo(videoId, index) {
+    if (!currentUser) { showToast('⚠️ Войди в аккаунт!'); return; }
+    const icon = document.getElementById('like-icon-' + index);
+    const countEl = document.getElementById('like-count-' + index);
+    const isLiked = currentUserData?.likedVideos?.includes(videoId);
+    
+    const statsRef = doc(db, 'videostats', videoId);
+    const userRef = doc(db, 'users', currentUser.uid);
+    
+    if (isLiked) {
+        // Убрать лайк
+        icon.classList.remove('liked');
+        await updateDoc(statsRef, { likes: increment(-1) });
+        await updateDoc(userRef, { likedVideos: arrayRemove(videoId) });
+        if (currentUserData) currentUserData.likedVideos = currentUserData.likedVideos.filter(id => id !== videoId);
+        countEl.textContent = Math.max(0, parseInt(countEl.textContent) - 1);
+    } else {
+        // Поставить лайк
+        icon.classList.add('liked');
+        await setDoc(statsRef, { likes: increment(1), videoId: videoId }, { merge: true });
+        await updateDoc(userRef, { likedVideos: arrayUnion(videoId) });
+        if (currentUserData) {
+            if (!currentUserData.likedVideos) currentUserData.likedVideos = [];
+            currentUserData.likedVideos.push(videoId);
+        }
+        countEl.textContent = parseInt(countEl.textContent) + 1;
+    }
+}
+
+async function repostVideo(videoId, index) {
+    if (!currentUser) { showToast('⚠️ Войди в аккаунт!'); return; }
+    const icon = document.getElementById('repost-icon-' + index);
+    const countEl = document.getElementById('repost-count-' + index);
+    const isReposted = currentUserData?.repostedVideos?.includes(videoId);
+    
+    const statsRef = doc(db, 'videostats', videoId);
+    const userRef = doc(db, 'users', currentUser.uid);
+    
+    if (isReposted) {
+        icon.classList.remove('reposted');
+        await updateDoc(statsRef, { reposts: increment(-1) });
+        await updateDoc(userRef, { repostedVideos: arrayRemove(videoId) });
+        if (currentUserData) currentUserData.repostedVideos = currentUserData.repostedVideos.filter(id => id !== videoId);
+        countEl.textContent = Math.max(0, parseInt(countEl.textContent) - 1);
+    } else {
+        icon.classList.add('reposted');
+        await setDoc(statsRef, { reposts: increment(1), videoId: videoId }, { merge: true });
+        await updateDoc(userRef, { repostedVideos: arrayUnion(videoId) });
+        if (currentUserData) {
+            if (!currentUserData.repostedVideos) currentUserData.repostedVideos = [];
+            currentUserData.repostedVideos.push(videoId);
+        }
+        countEl.textContent = parseInt(countEl.textContent) + 1;
+        showToast('🔄 Видео добавлено в репосты!');
+    }
+}
+
+function shareVideo(url) {
+    if (navigator.share) {
+        navigator.share({ title: 'RedDrop', url: url });
+    } else {
+        navigator.clipboard.writeText(url);
+        showToast('📋 Ссылка скопирована!');
+    }
+}
+
+// ===== ПРОФИЛЬ =====
+function loadProfile() {
+    if (!currentUserData) return;
+    document.getElementById('profileName').textContent = currentUserData.name || 'Пользователь';
+    document.getElementById('profileStatus').textContent = currentUserData.status || '✨ Новый пользователь';
+    document.getElementById('profileAvatar').textContent = (currentUserData.name || 'U')[0].toUpperCase();
+    document.getElementById('profileFollowers').textContent = (currentUserData.followers || []).length;
+    document.getElementById('profileFollowing').textContent = (currentUserData.following || []).length;
+    document.getElementById('profileLikes').textContent = currentUserData.likes || 0;
+    
+    const sparkDays = sparkData.days || 0;
+    const progress = Math.min(100, (sparkDays / 140) * 100);
+    document.getElementById('profileSpark').textContent = `Spark: ${sparkDays} дн. (ур. ${sparkData.level}) +${sparkData.bonusDays} бонус`;
+    document.getElementById('profileSparkBar').style.width = progress + '%';
+}
+
+// ===== ТРЕНДЫ =====
+async function loadTrending() {
+    const container = document.getElementById('trendingList');
+    try {
+        const q = query(collection(db, 'videostats'), orderBy('likes', 'desc'), limit(20));
+        const snap = await getDocs(q);
+        // Здесь должен быть getDocs, но для простоты используем onSnapshot один раз
+        container.innerHTML = '';
+        if (snap.empty) {
+            container.innerHTML = '<p style="color:var(--text2);text-align:center;padding:40px;">Пока нет трендов</p>';
+            return;
+        }
+        snap.forEach(doc => {
+            const data = doc.data();
+            const div = document.createElement('div');
+            div.style.cssText = 'padding:12px;background:var(--surface);border-radius:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;';
+            div.innerHTML = `<span>🎬 ${data.videoId || 'Видео'}</span><span>❤️ ${data.likes || 0}</span>`;
+            container.appendChild(div);
+        });
+    } catch(e) {
+        container.innerHTML = '<p style="color:var(--text2);text-align:center;padding:40px;">Ошибка загрузки трендов</p>';
+    }
+}
+
+// ===== УВЕДОМЛЕНИЯ =====
+async function loadNotifications() {
+    const container = document.getElementById('notificationsList');
+    container.innerHTML = '<p style="color:var(--text2);text-align:center;padding:40px;">Пока нет уведомлений</p>';
+    // Заглушка — в реальности слушаем Firestore
+}
+
+// ===== ПОИСК =====
+function searchHashtags() {
+    const query = document.getElementById('searchInput').value.toLowerCase().trim();
+    const container = document.getElementById('searchResults');
+    if (!query) {
+        container.innerHTML = '<p style="color:var(--text2);text-align:center;padding:40px;">Введи хештег для поиска</p>';
+        return;
+    }
+    const results = allVideos.filter(v => v.hashtags.some(h => h.includes(query)));
+    if (results.length === 0) {
+        container.innerHTML = '<p style="color:var(--text2);text-align:center;padding:40px;">Ничего не найдено</p>';
+        return;
+    }
+    container.innerHTML = results.map(v => `
+        <div style="padding:12px;background:var(--surface);border-radius:12px;margin-bottom:8px;cursor:pointer;" onclick="showScreen('screen-feed');document.getElementById('video-${allVideos.indexOf(v)}').scrollIntoView();">
+            <strong>${v.name}</strong><br>
+            <small style="color:var(--accent);">${v.hashtags.join(' ')}</small>
+        </div>
+    `).join('');
+}
+
+// ===== ЦВЕТ АКЦЕНТА =====
+document.getElementById('accentDots').addEventListener('click', (e) => {
+    if (e.target.classList.contains('color-dot')) {
+        const color = e.target.dataset.color;
+        document.documentElement.style.setProperty('--accent', color);
+        document.documentElement.style.setProperty('--accent2', color + 'cc');
+        userSettings.accentColor = color;
+        document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+        e.target.classList.add('active');
+        saveSettings();
+    }
+});
+
+// ===== ПЛАВАЮЩЕЕ МЕНЮ (перетаскивание) =====
+let isDragging = false;
+let dragStartX, dragStartY, navStartX, navStartY;
+const bottomNav = document.getElementById('bottomNav');
+
+bottomNav.addEventListener('touchstart', (e) => {
+    if (!document.body.classList.contains('nav-pos-float')) return;
+    isDragging = true;
+    dragStartX = e.touches[0].clientX;
+    dragStartY = e.touches[0].clientY;
+    const rect = bottomNav.getBoundingClientRect();
+    navStartX = rect.left;
+    navStartY = rect.top;
+}, { passive: false });
+
+bottomNav.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const dx = e.touches[0].clientX - dragStartX;
+    const dy = e.touches[0].clientY - dragStartY;
+    bottomNav.style.right = 'auto';
+    bottomNav.style.bottom = 'auto';
+    bottomNav.style.left = (navStartX + dx) + 'px';
+    bottomNav.style.top = (navStartY + dy) + 'px';
+    bottomNav.style.transform = 'none';
+}, { passive: false });
+
+bottomNav.addEventListener('touchend', () => {
+    isDragging = false;
+});
+
+// ===== АВТООЧИСТКА (проверка при входе) =====
+async function checkAutoClean() {
+    if (!currentUser || !currentUserData) return;
+    const lastActive = currentUserData.lastActive ? currentUserData.lastActive.toDate() : new Date();
+    const diffDays = Math.floor((new Date() - lastActive) / (1000 * 60 * 60 * 24));
+    const threshold = userSettings.autoClean || 30;
+    
+    if (diffDays >= threshold) {
+        // Очистка данных
+        showToast('🧹 Данные очищены из-за неактивности');
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+            likedVideos: [],
+            repostedVideos: [],
+            status: '✨ Новый пользователь',
+            lastActive: serverTimestamp()
+        });
+        currentUserData.likedVideos = [];
+        currentUserData.repostedVideos = [];
+    }
+}
+
+// ===== ИНИЦИАЛИЗАЦИЯ =====
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        currentUser = user;
+        await initUserData();
+        await checkAutoClean();
+        showScreen('screen-feed');
+        loadFeed();
+    } else {
+        currentUser = null;
+        currentUserData = null;
+        document.getElementById('screen-loading').classList.remove('active');
+        showScreen('screen-login');
+    }
+});
+
+// Применяем тему по умолчанию
+setTheme('dark');
+setNavPos('right');
+
+console.log('🔴 RedDrop готов!');
+console.log('👤 Авторизация через Google');
+console.log('🔥 Spark-система активна');
+console.log('🧹 Автоочистка настроена');
+</script>
+
+</body>
+</html>
